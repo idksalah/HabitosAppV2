@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # HabitosApp
 
 ## ¿Qué es HabitosApp?
@@ -64,3 +65,6 @@ Para ejecutar la aplicación, necesitas tener Flutter instalado y un dispositivo
 Este proyecto forma parte de mi aprendizaje en el desarrollo de aplicaciones con Flutter. Me ha permitido trabajar con la navegación entre pantallas, la gestión del estado, la creación de interfaces y el almacenamiento local de datos.
 
 El objetivo es seguir mejorando la aplicación y aprender a organizar mejor el código a medida que avanzo.
+=======
+# HabitosAppV2
+>>>>>>> d4153ef8750ca0b7059858b93f0dbbc2c5c175fc
