@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:habitos_app/screens/bienvenida_screen.dart';
-import 'package:habitos_app/screens/inicio_screen.dart';
-import 'package:habitos_app/services/preferencias_service.dart';
+
+import 'screens/bienvenida_screen.dart';
+import 'screens/inicio_screen.dart';
+import 'services/preferencias_service.dart';
 
 Future<void> main() async {
   // Preparamos Flutter antes de cargar las preferencias.

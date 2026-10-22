@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:habitos_app/screens/estadisticas_screen.dart';
-import 'package:habitos_app/screens/ajustes_screen.dart';
+import 'estadisticas_screen.dart';
+import 'ajustes_screen.dart';
 
 import '../models/habito.dart';
 import '../services/preferencias_service.dart';

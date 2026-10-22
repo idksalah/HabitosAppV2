@@ -1,6 +1,6 @@
 {
-    "name": "habitos_app",
-    "short_name": "habitos_app",
+    "name": "habitosappv2",
+    "short_name": "HabitosAppV2",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
