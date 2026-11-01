@@ -1,9 +1,11 @@
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/campo_texto_app.dart';
 import '../widgets/boton_principal.dart';
 import '../services/usuarios_service.dart';
+import '../services/preferencias_service.dart';
 import 'registro_page.dart';
 import 'inicio_screen.dart';
 import 'administracion_page.dart';
@@ -25,6 +27,26 @@ class LoginPageState extends State<LoginPage> {
   TextEditingController();
 
   String mensaje = '';
+
+  Future<void> cargarAjustesUsuario(String usuarioId) async {
+    final preferencias = await SharedPreferences.getInstance();
+
+    final oscuro =
+        preferencias.getBool('temaOscuro_$usuarioId') ?? false;
+
+    final tamano =
+        preferencias.getDouble('tamanoLetra_$usuarioId') ?? 1.0;
+
+    final ocultar =
+        preferencias.getBool('ocultarCompletados_$usuarioId') ?? false;
+
+    PreferenciasService.temaActual.value =
+    oscuro ? ThemeMode.dark : ThemeMode.light;
+
+    PreferenciasService.tamanoLetra.value = tamano;
+
+    PreferenciasService.ocultarCompletados.value = ocultar;
+  }
 
   Future<void> acceder() async {
     if (correoController.text.isEmpty ||
@@ -49,8 +71,10 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
+    await cargarAjustesUsuario(usuario.id);
 
-    // Comprobamos el rol del usuario.
+    if (!mounted) return;
+
     if (usuario.rol == 'admin') {
       Navigator.pushReplacement(
         context,
@@ -60,15 +84,25 @@ class LoginPageState extends State<LoginPage> {
           ),
         ),
       );
-    }
-    else {
+    } else {
+      String? nombre =
+      await PreferenciasService.obtenerNombre(usuario.id);
+
+      int? objetivo =
+      await PreferenciasService.obtenerObjetivo(usuario.id);
+
+      nombre ??= usuario.nombre;
+      objetivo ??= 3;
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => InicioScreen(
             usuario: usuario,
-            nombre: usuario.nombre,
-            objetivo: 3,
+            nombre: nombre!,
+            objetivo: objetivo!,
           ),
         ),
       );

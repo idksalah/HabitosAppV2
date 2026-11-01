@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/usuario.dart';
 import '../services/usuarios_service.dart';
@@ -52,6 +53,25 @@ class RegistroPageState extends State<RegistroPage> {
     if (!mounted) return;
 
     if (registrado) {
+      final preferencias = await SharedPreferences.getInstance();
+
+      await preferencias.setBool(
+        'temaOscuro_${usuario.id}',
+        false,
+      );
+
+      await preferencias.setDouble(
+        'tamanoLetra_${usuario.id}',
+        1.0,
+      );
+
+      await preferencias.setBool(
+        'ocultarCompletados_${usuario.id}',
+        false,
+      );
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Usuario registrado correctamente'),
@@ -90,26 +110,35 @@ class RegistroPageState extends State<RegistroPage> {
               pista: 'Introduce tu nombre',
               controlador: nombreController,
             ),
+
             const SizedBox(height: 20),
+
             CampoTextoApp(
               texto: 'Correo electrónico',
               pista: 'Introduce tu correo',
               controlador: correoController,
             ),
+
             const SizedBox(height: 20),
+
             CampoTextoApp(
               texto: 'Contraseña',
               pista: 'Crea una contraseña',
               controlador: contrasenaController,
               ocultarTexto: true,
             ),
+
             const SizedBox(height: 20),
+
             BotonPrincipal(
               texto: 'Registrarse',
               accion: registrar,
             ),
+
             const SizedBox(height: 10),
+
             Text(mensaje),
+
             TextButton(
               onPressed: () {
                 Navigator.pop(context);

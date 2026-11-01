@@ -28,57 +28,57 @@ class PreferenciasService {
   ValueNotifier(false);
 
   static Future<void> cargarAjustes() async {
-    final preferencias = await SharedPreferences.getInstance();
-
-    final oscuro = preferencias.getBool(claveTemaOscuro) ?? false;
-    final tamano = preferencias.getDouble(claveTamanoLetra) ?? 1.0;
-    final ocultar =
-        preferencias.getBool(claveOcultarCompletados) ?? false;
-
-    temaActual.value = oscuro ? ThemeMode.dark : ThemeMode.light;
-    tamanoLetra.value = tamano;
-    ocultarCompletados.value = ocultar;
+    temaActual.value = ThemeMode.light;
+    tamanoLetra.value = 1.0;
+    ocultarCompletados.value = false;
   }
 
   static Future<void> guardarTema(bool oscuro) async {
-    final preferencias = await SharedPreferences.getInstance();
-
-    await preferencias.setBool(claveTemaOscuro, oscuro);
-    temaActual.value = oscuro ? ThemeMode.dark : ThemeMode.light;
+    temaActual.value =
+    oscuro ? ThemeMode.dark : ThemeMode.light;
   }
 
   static Future<void> guardarTamanoLetra(double tamano) async {
-    final preferencias = await SharedPreferences.getInstance();
-
-    await preferencias.setDouble(claveTamanoLetra, tamano);
     tamanoLetra.value = tamano;
   }
 
-  static Future<void> guardarOcultarCompletados(bool ocultar) async {
-    final preferencias = await SharedPreferences.getInstance();
-
-    await preferencias.setBool(claveOcultarCompletados, ocultar);
+  static Future<void> guardarOcultarCompletados(
+      bool ocultar) async {
     ocultarCompletados.value = ocultar;
   }
 
   static Future<void> guardarDatosUsuario(
+      String usuarioId,
       String nombre,
       int objetivo,
       ) async {
     final preferencias = await SharedPreferences.getInstance();
 
-    await preferencias.setString(claveNombre, nombre);
-    await preferencias.setInt(claveObjetivo, objetivo);
+    await preferencias.setString(
+      '${claveNombre}_$usuarioId',
+      nombre,
+    );
+
+    await preferencias.setInt(
+      '${claveObjetivo}_$usuarioId',
+      objetivo,
+    );
   }
 
-  static Future<String?> obtenerNombre() async {
+  static Future<String?> obtenerNombre(String usuarioId) async {
     final preferencias = await SharedPreferences.getInstance();
-    return preferencias.getString(claveNombre);
+
+    return preferencias.getString(
+      '${claveNombre}_$usuarioId',
+    );
   }
 
-  static Future<int?> obtenerObjetivo() async {
+  static Future<int?> obtenerObjetivo(String usuarioId) async {
     final preferencias = await SharedPreferences.getInstance();
-    return preferencias.getInt(claveObjetivo);
+
+    return preferencias.getInt(
+      '${claveObjetivo}_$usuarioId',
+    );
   }
 
   static Future<void> guardarHabitos(
@@ -87,14 +87,16 @@ class PreferenciasService {
       ) async {
     final preferencias = await SharedPreferences.getInstance();
 
-    final listaJson = habitos.map((habito) => habito.toJson()).toList();
+    final listaJson =
+    habitos.map((habito) => habito.toJson()).toList();
 
     await preferencias.setString(
       '${claveHabitos}_$usuarioId',
       jsonEncode(listaJson),
     );
 
-    final nombres = habitos.map((habito) => habito.nombre).toList();
+    final nombres =
+    habitos.map((habito) => habito.nombre).toList();
 
     await preferencias.setStringList(
       '${claveNombresHabitos}_$usuarioId',
@@ -102,7 +104,8 @@ class PreferenciasService {
     );
   }
 
-  static Future<List<Habito>> obtenerHabitos(String usuarioId) async {
+  static Future<List<Habito>> obtenerHabitos(
+      String usuarioId) async {
     final preferencias = await SharedPreferences.getInstance();
 
     final textoJson = preferencias.getString(
@@ -116,13 +119,14 @@ class PreferenciasService {
     final List<dynamic> listaJson = jsonDecode(textoJson);
 
     return listaJson.map((elemento) {
-      return Habito.fromJson(Map<String, dynamic>.from(elemento));
+      return Habito.fromJson(
+        Map<String, dynamic>.from(elemento),
+      );
     }).toList();
   }
 
   static Future<List<String>> obtenerNombresHabitos(
-      String usuarioId,
-      ) async {
+      String usuarioId) async {
     final preferencias = await SharedPreferences.getInstance();
 
     return preferencias.getStringList(
@@ -131,9 +135,24 @@ class PreferenciasService {
         [];
   }
 
-  static Future<bool> hayDatosUsuario() async {
-    final nombre = await obtenerNombre();
-    final objetivo = await obtenerObjetivo();
+  static Future<void> eliminarDatosUsuario(
+      String usuarioId) async {
+    final preferencias = await SharedPreferences.getInstance();
+
+    await preferencias.remove('${claveNombre}_$usuarioId');
+    await preferencias.remove('${claveObjetivo}_$usuarioId');
+    await preferencias.remove('${claveHabitos}_$usuarioId');
+    await preferencias.remove('${claveNombresHabitos}_$usuarioId');
+    await preferencias.remove('${claveTemaOscuro}_$usuarioId');
+    await preferencias.remove('${claveTamanoLetra}_$usuarioId');
+    await preferencias.remove(
+      '${claveOcultarCompletados}_$usuarioId',
+    );
+  }
+
+  static Future<bool> hayDatosUsuario(String usuarioId) async {
+    final nombre = await obtenerNombre(usuarioId);
+    final objetivo = await obtenerObjetivo(usuarioId);
 
     return nombre != null &&
         nombre.isNotEmpty &&
@@ -145,7 +164,8 @@ class PreferenciasService {
     final preferencias = await SharedPreferences.getInstance();
 
     final aperturas = preferencias.getInt(claveAperturas) ?? 0;
-    final ultimaApertura = preferencias.getString(claveUltimaApertura);
+    final ultimaApertura =
+    preferencias.getString(claveUltimaApertura);
 
     if (ultimaApertura != null) {
       await preferencias.setString(
@@ -154,25 +174,34 @@ class PreferenciasService {
       );
     }
 
-    await preferencias.setInt(claveAperturas, aperturas + 1);
+    await preferencias.setInt(
+      claveAperturas,
+      aperturas + 1,
+    );
 
     final ahora = DateTime.now().toIso8601String();
 
-    await preferencias.setString(claveUltimaApertura, ahora);
+    await preferencias.setString(
+      claveUltimaApertura,
+      ahora,
+    );
   }
 
   static Future<int> obtenerAperturas() async {
     final preferencias = await SharedPreferences.getInstance();
+
     return preferencias.getInt(claveAperturas) ?? 0;
   }
 
   static Future<String?> obtenerUltimaApertura() async {
     final preferencias = await SharedPreferences.getInstance();
+
     return preferencias.getString(claveUltimaApertura);
   }
 
   static Future<String?> obtenerAperturaAnterior() async {
     final preferencias = await SharedPreferences.getInstance();
+
     return preferencias.getString(claveAperturaAnterior);
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/usuario.dart';
 import '../services/usuarios_service.dart';
+import '../services/preferencias_service.dart';
 
 class AdministracionPage extends StatefulWidget {
   final Usuario usuario;
@@ -33,7 +34,6 @@ class AdministracionPageState extends State<AdministracionPage> {
     }
   }
 
-  // Recuperamos los usuarios registrados.
   Future<void> cargarUsuarios() async {
     final lista = await UsuariosService.obtenerUsuarios();
 
@@ -45,7 +45,6 @@ class AdministracionPageState extends State<AdministracionPage> {
     });
   }
 
-  // Eliminamos un usuario.
   Future<void> eliminarUsuario(Usuario usuario) async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -73,6 +72,7 @@ class AdministracionPageState extends State<AdministracionPage> {
 
     if (confirmar != true) return;
 
+    await PreferenciasService.eliminarDatosUsuario(usuario.id);
     await UsuariosService.eliminarUsuario(usuario.id);
 
     if (!mounted) return;
@@ -86,7 +86,6 @@ class AdministracionPageState extends State<AdministracionPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Comprobamos que el usuario sea administrador.
     if (widget.usuario.rol != 'admin') {
       return Scaffold(
         appBar: AppBar(

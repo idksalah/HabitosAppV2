@@ -27,15 +27,52 @@ class InicioScreen extends StatefulWidget {
 
 class _InicioScreenState extends State<InicioScreen> {
   List<Habito> habitos = [];
+
   bool cargando = true;
+
+  String nombreActual = '';
+  int objetivoActual = 3;
 
   @override
   void initState() {
     super.initState();
+
+    nombreActual = widget.nombre;
+    objetivoActual = widget.objetivo;
+
+    cargarPerfil();
     cargarHabitos();
   }
 
-  // Recupera los hábitos del usuario conectado.
+  Future<void> cargarPerfil() async {
+    final id = widget.usuario.id;
+
+    String? nombre =
+    await PreferenciasService.obtenerNombre(id);
+
+    int? objetivo =
+    await PreferenciasService.obtenerObjetivo(id);
+
+    if (nombre == null || nombre.isEmpty ||
+        objetivo == null || objetivo <= 0) {
+      nombre = widget.usuario.nombre;
+      objetivo = 3;
+
+      await PreferenciasService.guardarDatosUsuario(
+        id,
+        nombre,
+        objetivo,
+      );
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      nombreActual = nombre!;
+      objetivoActual = objetivo!;
+    });
+  }
+
   Future<void> cargarHabitos() async {
     final lista = await PreferenciasService.obtenerHabitos(
       widget.usuario.id,
@@ -65,7 +102,6 @@ class _InicioScreenState extends State<InicioScreen> {
     return habitos.where(estaCompletadoHoy).length;
   }
 
-  // Marca o desmarca un hábito.
   Future<void> cambiarCompletado(
       Habito habito,
       bool completado,
@@ -90,7 +126,6 @@ class _InicioScreenState extends State<InicioScreen> {
     setState(() {});
   }
 
-  // Crea un hábito nuevo.
   Future<void> guardarNuevoHabito(String nombre) async {
     final nuevoHabito = Habito(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -113,7 +148,6 @@ class _InicioScreenState extends State<InicioScreen> {
     });
   }
 
-  // Abre el formulario para añadir un hábito.
   Future<void> mostrarFormulario() async {
     final controlador = TextEditingController();
 
@@ -138,7 +172,9 @@ class _InicioScreenState extends State<InicioScreen> {
                 final nombreIntroducido = texto.trim();
 
                 if (nombreIntroducido.isNotEmpty) {
-                  Navigator.of(dialogContext).pop(nombreIntroducido);
+                  Navigator.of(dialogContext).pop(
+                    nombreIntroducido,
+                  );
                 }
               },
             ),
@@ -174,7 +210,6 @@ class _InicioScreenState extends State<InicioScreen> {
     await guardarNuevoHabito(nombre);
   }
 
-  // Abre la pantalla de edición.
   Future<void> editarHabito(Habito habito) async {
     final resultado = await Navigator.push<Map<String, dynamic>>(
       context,
@@ -202,21 +237,26 @@ class _InicioScreenState extends State<InicioScreen> {
     );
   }
 
-  // Elimina un hábito después de pedir confirmación.
   Future<void> eliminarHabito(Habito habito) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Eliminar hábito'),
-          content: Text('¿Quieres eliminar "${habito.nombre}"?'),
+          content: Text(
+            '¿Quieres eliminar "${habito.nombre}"?',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
               child: const Text('Eliminar'),
             ),
           ],
@@ -227,7 +267,10 @@ class _InicioScreenState extends State<InicioScreen> {
     if (!mounted || confirmar != true) return;
 
     final nuevaLista = List<Habito>.from(habitos);
-    nuevaLista.removeWhere((elemento) => elemento.id == habito.id);
+
+    nuevaLista.removeWhere(
+          (elemento) => elemento.id == habito.id,
+    );
 
     await PreferenciasService.guardarHabitos(
       widget.usuario.id,
@@ -248,7 +291,9 @@ class _InicioScreenState extends State<InicioScreen> {
         title: const Text('Mis hábitos'),
       ),
       body: cargando
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
           : Column(
         children: [
           Padding(
@@ -256,15 +301,19 @@ class _InicioScreenState extends State<InicioScreen> {
             child: Column(
               children: [
                 Text(
-                  '¡Hola, ${widget.nombre}!',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  '¡Hola, $nombreActual!',
+                  style: Theme.of(context)
+                      .textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Text('Objetivo diario: ${widget.objetivo} hábitos'),
+                Text(
+                  'Objetivo diario: $objetivoActual hábitos',
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Progreso de hoy: '
-                      '${obtenerCompletadosHoy()} / ${widget.objetivo}',
+                      '${obtenerCompletadosHoy()} / '
+                      '$objetivoActual',
                 ),
               ],
             ),
@@ -277,7 +326,8 @@ class _InicioScreenState extends State<InicioScreen> {
                 final habitosVisibles = ocultar
                     ? habitos
                     .where(
-                      (habito) => !estaCompletadoHoy(habito),
+                      (habito) =>
+                  !estaCompletadoHoy(habito),
                 )
                     .toList()
                     : habitos;
@@ -303,7 +353,10 @@ class _InicioScreenState extends State<InicioScreen> {
                       habito: habito,
                       completado: estaCompletadoHoy(habito),
                       alCambiarCompletado: (completado) {
-                        cambiarCompletado(habito, completado);
+                        cambiarCompletado(
+                          habito,
+                          completado,
+                        );
                       },
                       alEditar: () {
                         editarHabito(habito);
@@ -346,7 +399,9 @@ class _InicioScreenState extends State<InicioScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AjustesScreen(),
+                  builder: (context) => AjustesScreen(
+                    usuario: widget.usuario,
+                  ),
                 ),
               );
             },
