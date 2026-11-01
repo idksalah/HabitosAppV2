@@ -66,6 +66,7 @@ class LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(
           builder: (context) => InicioScreen(
+            usuario: usuario,
             nombre: usuario.nombre,
             objetivo: 3,
           ),
