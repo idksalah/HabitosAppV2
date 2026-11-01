@@ -26,6 +26,24 @@ class UsuariosService {
     }).toList();
   }
 
+  static Future<Usuario?> obtenerUsuarioPorId(String id) async {
+    final usuarios = await obtenerUsuarios();
+
+    for (final usuario in usuarios) {
+      if (usuario.id == id) {
+        return usuario;
+      }
+    }
+
+    return null;
+  }
+
+  static Future<bool> esAdministrador(String id) async {
+    final usuario = await obtenerUsuarioPorId(id);
+
+    return usuario != null && usuario.rol == 'admin';
+  }
+
   static Future<bool> registrarUsuario(Usuario usuario) async {
     final usuarios = await obtenerUsuarios();
 
@@ -71,6 +89,22 @@ class UsuariosService {
   static Future<bool> eliminarUsuario(String id) async {
     final usuarios = await obtenerUsuarios();
 
+    final usuario = usuarios.firstWhere(
+          (elemento) => elemento.id == id,
+      orElse: () => Usuario(
+        id: '',
+        nombre: '',
+        correo: '',
+        contrasena: '',
+        rol: '',
+        fechaCreacion: DateTime.now(),
+      ),
+    );
+
+    if (usuario.id.isEmpty || usuario.rol == 'admin') {
+      return false;
+    }
+
     usuarios.removeWhere((usuario) => usuario.id == id);
 
     final preferencias = await SharedPreferences.getInstance();
@@ -107,5 +141,4 @@ class UsuariosService {
 
     await registrarUsuario(administrador);
   }
-
 }

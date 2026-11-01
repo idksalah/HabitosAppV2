@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'estadisticas_screen.dart';
 import 'ajustes_screen.dart';
+import 'login_page.dart';
 import '../models/habito.dart';
 import '../models/usuario.dart';
 import '../services/preferencias_service.dart';
@@ -42,6 +43,21 @@ class _InicioScreenState extends State<InicioScreen> {
 
     cargarPerfil();
     cargarHabitos();
+  }
+
+  Future<void> cerrarSesion() async {
+    PreferenciasService.temaActual.value = ThemeMode.light;
+    PreferenciasService.tamanoLetra.value = 1.0;
+    PreferenciasService.ocultarCompletados.value = false;
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+          (route) => false,
+    );
   }
 
   Future<void> cargarPerfil() async {
@@ -289,6 +305,13 @@ class _InicioScreenState extends State<InicioScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis hábitos'),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: cerrarSesion,
+          ),
+        ],
       ),
       body: cargando
           ? const Center(

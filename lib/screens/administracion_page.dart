@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/usuario.dart';
 import '../services/usuarios_service.dart';
 import '../services/preferencias_service.dart';
+import 'login_page.dart';
 
 class AdministracionPage extends StatefulWidget {
   final Usuario usuario;
@@ -22,15 +23,31 @@ class AdministracionPage extends StatefulWidget {
 class AdministracionPageState extends State<AdministracionPage> {
   List<Usuario> usuarios = [];
   bool cargando = true;
+  bool esAdmin = false;
 
   @override
   void initState() {
     super.initState();
+    comprobarPermisos();
+  }
 
-    if (widget.usuario.rol == 'admin') {
-      cargarUsuarios();
+  Future<void> comprobarPermisos() async {
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      esAdmin = permiso;
+    });
+
+    if (permiso) {
+      await cargarUsuarios();
     } else {
-      cargando = false;
+      setState(() {
+        cargando = false;
+      });
     }
   }
 
@@ -43,6 +60,21 @@ class AdministracionPageState extends State<AdministracionPage> {
       usuarios = lista;
       cargando = false;
     });
+  }
+
+  Future<void> cerrarSesion() async {
+    PreferenciasService.temaActual.value = ThemeMode.light;
+    PreferenciasService.tamanoLetra.value = 1.0;
+    PreferenciasService.ocultarCompletados.value = false;
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+          (route) => false,
+    );
   }
 
   Future<void> eliminarUsuario(Usuario usuario) async {
@@ -70,10 +102,21 @@ class AdministracionPageState extends State<AdministracionPage> {
       },
     );
 
-    if (confirmar != true) return;
+    if (!mounted || confirmar != true) return;
+
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
+
+    if (!permiso) return;
+
+    final eliminado = await UsuariosService.eliminarUsuario(
+      usuario.id,
+    );
+
+    if (!eliminado) return;
 
     await PreferenciasService.eliminarDatosUsuario(usuario.id);
-    await UsuariosService.eliminarUsuario(usuario.id);
 
     if (!mounted) return;
 
@@ -86,7 +129,18 @@ class AdministracionPageState extends State<AdministracionPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.usuario.rol != 'admin') {
+    if (cargando) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Administración'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (!esAdmin) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Acceso denegado'),
@@ -100,12 +154,15 @@ class AdministracionPageState extends State<AdministracionPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Administración'),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            onPressed: cerrarSesion,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
-      body: cargando
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
-          : usuarios.isEmpty
+      body: usuarios.isEmpty
           ? const Center(
         child: Text('No hay usuarios registrados'),
       )
