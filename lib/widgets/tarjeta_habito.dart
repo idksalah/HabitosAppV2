@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/habito.dart';
+import 'boton_principal.dart';
 
 class TarjetaHabito extends StatelessWidget {
   final Habito habito;
@@ -82,12 +83,9 @@ class TarjetaHabito extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: alEditar,
-                child: const Text('Editar hábito'),
-              ),
+            BotonPrincipal(
+              texto: 'Editar hábito',
+              accion: alEditar,
             ),
           ],
         ),
