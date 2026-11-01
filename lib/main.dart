@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/login_page.dart';
 import 'services/preferencias_service.dart';
+import 'services/usuarios_service.dart';
 
 Future<void> main() async {
   // Preparamos Flutter antes de cargar las preferencias.
@@ -10,6 +11,9 @@ Future<void> main() async {
 
   // Recuperamos los ajustes guardados.
   await PreferenciasService.cargarAjustes();
+
+  // Creamos el administrador inicial si todavía no existe.
+  await UsuariosService.crearAdministradorInicial();
 
   // Registramos que la aplicación se ha abierto.
   await PreferenciasService.registrarApertura();

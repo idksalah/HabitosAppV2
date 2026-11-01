@@ -100,7 +100,7 @@ class UsuariosService {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       nombre: 'admin',
       correo: 'admin@admin.com',
-      contrasena: 'admin123',
+      contrasena: 'admin1234',
       rol: 'admin',
       fechaCreacion: DateTime.now(),
     );

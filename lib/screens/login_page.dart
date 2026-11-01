@@ -6,6 +6,7 @@ import '../widgets/boton_principal.dart';
 import '../services/usuarios_service.dart';
 import 'registro_page.dart';
 import 'inicio_screen.dart';
+import 'administracion_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -48,16 +49,26 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Entramos en la pantalla principal.
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => InicioScreen(
-          nombre: usuario.nombre,
-          objetivo: 3,
+
+    // Comprobamos el rol del usuario.
+    if (usuario.rol == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdministracionPage(),
         ),
-      ),
-    );
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => InicioScreen(
+            nombre: usuario.nombre,
+            objetivo: 3,
+          ),
+        ),
+      );
+    }
   }
 
   @override
