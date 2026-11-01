@@ -87,4 +87,25 @@ class UsuariosService {
     return true;
   }
 
+  static Future<void> crearAdministradorInicial() async {
+    final usuarios = await obtenerUsuarios();
+
+    for (final usuario in usuarios) {
+      if (usuario.rol == 'admin') {
+        return;
+      }
+    }
+
+    final administrador = Usuario(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      nombre: 'admin',
+      correo: 'admin@admin.com',
+      contrasena: 'admin123',
+      rol: 'admin',
+      fechaCreacion: DateTime.now(),
+    );
+
+    await registrarUsuario(administrador);
+  }
+
 }
