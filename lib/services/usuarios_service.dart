@@ -67,4 +67,24 @@ class UsuariosService {
 
     return null;
   }
+
+  static Future<bool> eliminarUsuario(String id) async {
+    final usuarios = await obtenerUsuarios();
+
+    usuarios.removeWhere((usuario) => usuario.id == id);
+
+    final preferencias = await SharedPreferences.getInstance();
+
+    final listaJson = usuarios.map((usuario) {
+      return usuario.toJson();
+    }).toList();
+
+    await preferencias.setString(
+      claveUsuarios,
+      jsonEncode(listaJson),
+    );
+
+    return true;
+  }
+
 }
