@@ -5,7 +5,12 @@ import '../models/usuario.dart';
 import '../services/usuarios_service.dart';
 
 class AdministracionPage extends StatefulWidget {
-  const AdministracionPage({super.key});
+  final Usuario usuario;
+
+  const AdministracionPage({
+    super.key,
+    required this.usuario,
+  });
 
   @override
   State<AdministracionPage> createState() {
@@ -20,7 +25,12 @@ class AdministracionPageState extends State<AdministracionPage> {
   @override
   void initState() {
     super.initState();
-    cargarUsuarios();
+
+    if (widget.usuario.rol == 'admin') {
+      cargarUsuarios();
+    } else {
+      cargando = false;
+    }
   }
 
   // Recuperamos los usuarios registrados.
@@ -42,9 +52,7 @@ class AdministracionPageState extends State<AdministracionPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Eliminar usuario'),
-          content: Text(
-            '¿Quieres eliminar a ${usuario.nombre}?',
-          ),
+          content: Text('¿Quieres eliminar a ${usuario.nombre}?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -78,6 +86,18 @@ class AdministracionPageState extends State<AdministracionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Comprobamos que el usuario sea administrador.
+    if (widget.usuario.rol != 'admin') {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Acceso denegado'),
+        ),
+        body: const Center(
+          child: Text('No tienes permisos para acceder'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Administración'),
@@ -106,7 +126,9 @@ class AdministracionPageState extends State<AdministracionPage> {
                 '${usuario.correo}\nRol: ${usuario.rol}',
               ),
               isThreeLine: true,
-              trailing: IconButton(
+              trailing: usuario.id == widget.usuario.id
+                  ? null
+                  : IconButton(
                 icon: const Icon(
                   Icons.delete,
                   color: Colors.red,

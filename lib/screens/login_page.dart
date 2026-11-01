@@ -55,10 +55,13 @@ class LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const AdministracionPage(),
+          builder: (context) => AdministracionPage(
+            usuario: usuario,
+          ),
         ),
       );
-    } else {
+    }
+    else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
