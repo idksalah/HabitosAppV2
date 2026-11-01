@@ -5,6 +5,7 @@ import '../widgets/campo_texto_app.dart';
 import '../widgets/boton_principal.dart';
 import '../services/usuarios_service.dart';
 import 'registro_page.dart';
+import 'inicio_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -38,6 +39,8 @@ class LoginPageState extends State<LoginPage> {
       contrasenaController.text,
     );
 
+    if (!mounted) return;
+
     if (usuario == null) {
       setState(() {
         mensaje = 'Correo o contraseña incorrectos';
@@ -45,9 +48,16 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() {
-      mensaje = 'Bienvenido ${usuario.nombre}';
-    });
+    // Entramos en la pantalla principal.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InicioScreen(
+          nombre: usuario.nombre,
+          objetivo: 3,
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,20 +83,27 @@ class LoginPageState extends State<LoginPage> {
               pista: 'Introduce tu correo',
               controlador: correoController,
             ),
+
             const SizedBox(height: 20),
+
             CampoTextoApp(
               texto: 'Contraseña',
               pista: 'Introduce tu contraseña',
               controlador: contrasenaController,
               ocultarTexto: true,
             ),
+
             const SizedBox(height: 20),
+
             BotonPrincipal(
               texto: 'Acceder',
               accion: acceder,
             ),
+
             const SizedBox(height: 10),
+
             Text(mensaje),
+
             TextButton(
               onPressed: () {
                 Navigator.push(

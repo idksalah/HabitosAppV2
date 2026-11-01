@@ -1,7 +1,7 @@
+
 import 'package:flutter/material.dart';
 
-import 'screens/bienvenida_screen.dart';
-import 'screens/inicio_screen.dart';
+import 'screens/login_page.dart';
 import 'services/preferencias_service.dart';
 
 Future<void> main() async {
@@ -38,7 +38,9 @@ class MyApp extends StatelessWidget {
 
               // Configuración del tema claro.
               theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: Colors.green,
+                ),
                 useMaterial3: true,
               ),
 
@@ -55,7 +57,7 @@ class MyApp extends StatelessWidget {
               // Aplicamos el tema elegido en Ajustes.
               themeMode: tema,
 
-              // Aplicamos el tamaño de letra en toda la aplicación.
+              // Aplicamos el tamaño de letra.
               builder: (context, child) {
                 final mediaQuery = MediaQuery.of(context);
 
@@ -67,72 +69,12 @@ class MyApp extends StatelessWidget {
                 );
               },
 
-              // Definimos la ruta inicial.
-              routes: {'/': (context) => const PantallaInicial()},
-              initialRoute: '/',
+              // Mostramos primero el inicio de sesión.
+              home: const LoginPage(),
             );
           },
         );
       },
     );
-  }
-}
-
-// Comprueba si el usuario ya ha introducido sus datos.
-class PantallaInicial extends StatefulWidget {
-  const PantallaInicial({super.key});
-
-  @override
-  State<PantallaInicial> createState() {
-    return _PantallaInicialState();
-  }
-}
-
-class _PantallaInicialState extends State<PantallaInicial> {
-  String? nombre;
-  int? objetivo;
-  bool cargando = true;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Cargamos los datos al iniciar esta pantalla.
-    cargarDatos();
-  }
-
-  // Recupera el nombre y el objetivo guardados.
-  Future<void> cargarDatos() async {
-    final nombreGuardado = await PreferenciasService.obtenerNombre();
-
-    final objetivoGuardado = await PreferenciasService.obtenerObjetivo();
-
-    // Comprobamos que la pantalla siga activa.
-    if (!mounted) return;
-
-    setState(() {
-      nombre = nombreGuardado;
-      objetivo = objetivoGuardado;
-      cargando = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Mientras se recuperan los datos, mostramos un indicador.
-    if (cargando) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    // Si los datos existen, abrimos la pantalla principal.
-    if (nombre != null &&
-        nombre!.isNotEmpty &&
-        objetivo != null &&
-        objetivo! > 0) {
-      return InicioScreen(nombre: nombre!, objetivo: objetivo!);
-    }
-
-    // Si no hay datos guardados, mostramos la bienvenida.
-    return const BienvenidaScreen();
   }
 }
