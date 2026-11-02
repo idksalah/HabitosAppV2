@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/usuario.dart';
-import '../services/usuarios_service.dart';
+import '../modelos/usuario.dart';
+import '../servicios/usuarios_service.dart';
 import '../widgets/campo_texto_app.dart';
 import '../widgets/boton_principal.dart';
 

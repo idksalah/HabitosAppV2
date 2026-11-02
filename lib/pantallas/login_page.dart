@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/campo_texto_app.dart';
 import '../widgets/boton_principal.dart';
-import '../services/usuarios_service.dart';
-import '../services/preferencias_service.dart';
+import '../servicios/usuarios_service.dart';
+import '../servicios/preferencias_service.dart';
 import 'registro_page.dart';
 import 'inicio_screen.dart';
 import 'administracion_page.dart';

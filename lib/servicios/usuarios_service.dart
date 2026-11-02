@@ -1,7 +1,7 @@
 
 import 'package:sqflite/sqflite.dart';
 
-import '../models/usuario.dart';
+import '../modelos/usuario.dart';
 import 'database_helper.dart';
 
 class UsuariosService {

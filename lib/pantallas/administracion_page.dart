@@ -1,12 +1,12 @@
-
 import 'package:flutter/material.dart';
 
-import '../models/usuario.dart';
-import '../services/usuarios_service.dart';
-import '../services/preferencias_service.dart';
-import '../widgets/campo_texto_app.dart';
+import '../modelos/usuario.dart';
+import '../servicios/usuarios_service.dart';
+import '../servicios/preferencias_service.dart';
 import '../widgets/boton_principal.dart';
-
+import '../widgets/campo_texto_app.dart';
+import 'admin_habitos_page.dart';
+import 'admin_estadisticas_page.dart';
 import 'login_page.dart';
 import 'registro_page.dart';
 
@@ -35,11 +35,9 @@ class AdministracionPageState extends State<AdministracionPage> {
     comprobarPermisos();
   }
 
-  // Comprueba si el usuario es administrador.
+  // Comprueba si el usuario tiene permiso de administrador.
   Future<void> comprobarPermisos() async {
-    final permiso = await UsuariosService.esAdministrador(
-      widget.usuario.id,
-    );
+    final permiso = await UsuariosService.esAdministrador(widget.usuario.id);
 
     if (!mounted) return;
 
@@ -56,7 +54,7 @@ class AdministracionPageState extends State<AdministracionPage> {
     }
   }
 
-  // Recupera todos los usuarios.
+  // Recupera los usuarios de la base de datos.
   Future<void> cargarUsuarios() async {
     final lista = await UsuariosService.obtenerUsuarios();
 
@@ -68,37 +66,29 @@ class AdministracionPageState extends State<AdministracionPage> {
     });
   }
 
-  // Abre el registro para crear un usuario.
+  void mostrarMensaje(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
+  }
+
   Future<void> crearUsuario() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const RegistroPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const RegistroPage()),
     );
 
     if (!mounted) return;
-
     await cargarUsuarios();
   }
 
-  // Permite editar los datos de un usuario.
   Future<void> editarUsuario(Usuario usuario) async {
-    final usuarioController = TextEditingController(
-      text: usuario.usuario,
-    );
-
-    final nombreController = TextEditingController(
-      text: usuario.nombre,
-    );
-
-    final apellidosController = TextEditingController(
-      text: usuario.apellidos,
-    );
-
-    final correoController = TextEditingController(
-      text: usuario.correo,
-    );
+    final usuarioController = TextEditingController(text: usuario.usuario);
+    final nombreController = TextEditingController(text: usuario.nombre);
+    final apellidosController = TextEditingController(text: usuario.apellidos);
+    final correoController = TextEditingController(text: usuario.correo);
+    final contrasenaController = TextEditingController();
 
     String rolSeleccionado = usuario.rol;
     String mensaje = '';
@@ -110,7 +100,6 @@ class AdministracionPageState extends State<AdministracionPage> {
           builder: (context, actualizarDialogo) {
             return AlertDialog(
               title: const Text('Editar usuario'),
-
               content: SizedBox(
                 width: 350,
                 child: SingleChildScrollView(
@@ -122,34 +111,32 @@ class AdministracionPageState extends State<AdministracionPage> {
                         pista: 'Nombre de usuario',
                         controlador: usuarioController,
                       ),
-
                       const SizedBox(height: 12),
-
                       CampoTextoApp(
                         texto: 'Nombre',
                         pista: 'Nombre',
                         controlador: nombreController,
                       ),
-
                       const SizedBox(height: 12),
-
                       CampoTextoApp(
                         texto: 'Apellidos',
                         pista: 'Apellidos',
                         controlador: apellidosController,
                       ),
-
                       const SizedBox(height: 12),
-
                       CampoTextoApp(
                         texto: 'Correo',
                         pista: 'Correo electrónico',
                         controlador: correoController,
                       ),
-
                       const SizedBox(height: 12),
-
-                      // El administrador puede cambiar el rol.
+                      CampoTextoApp(
+                        texto: 'Nueva contraseña (opcional)',
+                        pista: 'Déjala vacía para conservar la actual',
+                        controlador: contrasenaController,
+                        ocultarTexto: true,
+                      ),
+                      const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: rolSeleccionado,
                         decoration: const InputDecoration(
@@ -169,35 +156,27 @@ class AdministracionPageState extends State<AdministracionPage> {
                         onChanged: usuario.id == widget.usuario.id
                             ? null
                             : (valor) {
-                          if (valor != null) {
-                            actualizarDialogo(() {
-                              rolSeleccionado = valor;
-                            });
-                          }
-                        },
+                                if (valor != null) {
+                                  actualizarDialogo(() {
+                                    rolSeleccionado = valor;
+                                  });
+                                }
+                              },
                       ),
-
                       const SizedBox(height: 12),
-
                       Text(
                         mensaje,
-                        style: const TextStyle(
-                          color: Colors.red,
-                        ),
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ],
                   ),
                 ),
               ),
-
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext, false);
-                  },
+                  onPressed: () => Navigator.pop(dialogContext, false),
                   child: const Text('Cancelar'),
                 ),
-
                 ElevatedButton(
                   onPressed: () {
                     if (usuarioController.text.trim().isEmpty ||
@@ -209,7 +188,6 @@ class AdministracionPageState extends State<AdministracionPage> {
                       });
                       return;
                     }
-
                     Navigator.pop(dialogContext, true);
                   },
                   child: const Text('Guardar'),
@@ -221,43 +199,33 @@ class AdministracionPageState extends State<AdministracionPage> {
       },
     );
 
-    if (guardar == true) {
-      // Comprobamos que no haya nombres o correos repetidos.
+    if (guardar == true && mounted) {
       bool repetido = false;
 
       for (final elemento in usuarios) {
-        if (elemento.id != usuario.id) {
-          if (elemento.usuario.toLowerCase() ==
-              usuarioController.text.trim().toLowerCase() ||
-              elemento.correo.toLowerCase() ==
-                  correoController.text.trim().toLowerCase()) {
-            repetido = true;
-          }
+        if (elemento.id != usuario.id &&
+            (elemento.usuario.toLowerCase() ==
+                    usuarioController.text.trim().toLowerCase() ||
+                elemento.correo.toLowerCase() ==
+                    correoController.text.trim().toLowerCase())) {
+          repetido = true;
         }
       }
 
-      if (!mounted) return;
-
       if (repetido) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'El usuario o el correo ya existe',
-            ),
-          ),
-        );
+        mostrarMensaje('El usuario o el correo ya existe');
       } else {
         usuario.usuario = usuarioController.text.trim();
         usuario.nombre = nombreController.text.trim();
         usuario.apellidos = apellidosController.text.trim();
         usuario.correo = correoController.text.trim();
         usuario.rol = rolSeleccionado;
+        if (contrasenaController.text.isNotEmpty) {
+          usuario.contrasena = contrasenaController.text;
+        }
 
         await UsuariosService.guardarUsuarios(usuarios);
-
-        if (!mounted) return;
-
-        setState(() {});
+        if (mounted) await cargarUsuarios();
       }
     }
 
@@ -265,29 +233,23 @@ class AdministracionPageState extends State<AdministracionPage> {
     nombreController.dispose();
     apellidosController.dispose();
     correoController.dispose();
+    contrasenaController.dispose();
   }
 
-  // Pide confirmación antes de eliminar un usuario.
   Future<void> eliminarUsuario(Usuario usuario) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Eliminar usuario'),
-          content: Text(
-            '¿Quieres eliminar a ${usuario.nombre}?',
-          ),
+          content: Text('¿Quieres eliminar a ${usuario.nombre}?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Eliminar'),
             ),
           ],
@@ -297,29 +259,36 @@ class AdministracionPageState extends State<AdministracionPage> {
 
     if (!mounted || confirmar != true) return;
 
-    // Comprobamos los permisos antes de eliminar.
-    final permiso = await UsuariosService.esAdministrador(
-      widget.usuario.id,
-    );
-
+    final permiso = await UsuariosService.esAdministrador(widget.usuario.id);
     if (!permiso) return;
 
-    final eliminado = await UsuariosService.eliminarUsuario(
-      usuario.id,
-    );
-
+    final eliminado = await UsuariosService.eliminarUsuario(usuario.id);
     if (!eliminado) return;
 
-    await PreferenciasService.eliminarDatosUsuario(
-      usuario.id,
-    );
-
-    if (!mounted) return;
-
-    await cargarUsuarios();
+    await PreferenciasService.eliminarDatosUsuario(usuario.id);
+    if (mounted) await cargarUsuarios();
   }
 
-  // Cierra la sesión del administrador.
+  // Abre la gestión de hábitos de todos los usuarios.
+  void abrirHabitos() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminHabitosPage(usuario: widget.usuario),
+      ),
+    );
+  }
+
+  // Abre la gestión de estadísticas.
+  void abrirEstadisticas() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminEstadisticasPage(usuario: widget.usuario),
+      ),
+    );
+  }
+
   void cerrarSesion() {
     PreferenciasService.temaActual.value = ThemeMode.light;
     PreferenciasService.tamanoLetra.value = 1.0;
@@ -327,34 +296,75 @@ class AdministracionPageState extends State<AdministracionPage> {
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
-          (route) => false,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  Widget construirUsuarios() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: BotonPrincipal(
+            texto: 'Añadir usuario',
+            accion: crearUsuario,
+          ),
+        ),
+        Expanded(
+          child: usuarios.isEmpty
+              ? const Center(child: Text('No hay usuarios'))
+              : ListView.builder(
+                  itemCount: usuarios.length,
+                  itemBuilder: (context, index) {
+                    final usuario = usuarios[index];
+                    return Card(
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text('${usuario.nombre} ${usuario.apellidos}'),
+                        subtitle: Text(
+                          'Usuario: ${usuario.usuario}\n'
+                          'Correo: ${usuario.correo}\n'
+                          'Rol: ${usuario.rol}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Editar usuario',
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => editarUsuario(usuario),
+                            ),
+                            if (usuario.rol != 'admin')
+                              IconButton(
+                                tooltip: 'Eliminar usuario',
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => eliminarUsuario(usuario),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (cargando) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Administración'),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (!esAdmin) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Acceso denegado'),
-        ),
-        body: const Center(
-          child: Text('No tienes permisos para acceder'),
-        ),
+        appBar: AppBar(title: const Text('Acceso denegado')),
+        body: const Center(child: Text('No tienes permisos para acceder')),
       );
     }
 
@@ -369,77 +379,26 @@ class AdministracionPageState extends State<AdministracionPage> {
           ),
         ],
       ),
-
       body: Column(
         children: [
-          // Botón para añadir usuarios.
           Padding(
             padding: const EdgeInsets.all(16),
-            child: BotonPrincipal(
-              texto: 'Añadir usuario',
-              accion: crearUsuario,
+            child: Column(
+              children: [
+                BotonPrincipal(
+                  texto: 'Gestionar hábitos',
+                  accion: abrirHabitos,
+                ),
+                const SizedBox(height: 8),
+                BotonPrincipal(
+                  texto: 'Gestionar estadísticas',
+                  accion: abrirEstadisticas,
+                ),
+              ],
             ),
           ),
-
-          // Lista de usuarios.
-          Expanded(
-            child: usuarios.isEmpty
-                ? const Center(
-              child: Text('No hay usuarios registrados'),
-            )
-                : ListView.builder(
-              itemCount: usuarios.length,
-              itemBuilder: (context, index) {
-                final usuario = usuarios[index];
-
-                return Card(
-                  margin: const EdgeInsets.all(8),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.person),
-                    ),
-
-                    title: Text(
-                      '${usuario.nombre} ${usuario.apellidos}',
-                    ),
-
-                    subtitle: Text(
-                      'Usuario: ${usuario.usuario}\n'
-                          'Correo: ${usuario.correo}\n'
-                          'Rol: ${usuario.rol}',
-                    ),
-
-                    isThreeLine: true,
-
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Editar usuario',
-                          icon: const Icon(Icons.edit),
-                          onPressed: () {
-                            editarUsuario(usuario);
-                          },
-                        ),
-
-                        if (usuario.rol != 'admin')
-                          IconButton(
-                            tooltip: 'Eliminar usuario',
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.red,
-                            ),
-                            onPressed: () {
-                              eliminarUsuario(usuario);
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+          const Divider(),
+          Expanded(child: construirUsuarios()),
         ],
       ),
     );

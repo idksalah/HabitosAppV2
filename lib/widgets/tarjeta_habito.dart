@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../models/habito.dart';
+import '../modelos/habito.dart';
 import 'boton_principal.dart';
 
 class TarjetaHabito extends StatelessWidget {

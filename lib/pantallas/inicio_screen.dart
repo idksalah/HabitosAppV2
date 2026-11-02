@@ -6,9 +6,9 @@ import 'ajustes_screen.dart';
 import 'login_page.dart';
 import 'editar_habito_screen.dart';
 
-import '../models/habito.dart';
-import '../models/usuario.dart';
-import '../services/preferencias_service.dart';
+import '../modelos/habito.dart';
+import '../modelos/usuario.dart';
+import '../servicios/preferencias_service.dart';
 import '../widgets/tarjeta_habito.dart';
 
 class InicioScreen extends StatefulWidget {

@@ -1,9 +1,9 @@
 
 import 'package:flutter/material.dart';
 
-import '../models/habito.dart';
-import '../models/usuario.dart';
-import '../services/preferencias_service.dart';
+import '../modelos/habito.dart';
+import '../modelos/usuario.dart';
+import '../servicios/preferencias_service.dart';
 import '../widgets/dato_estadistica.dart';
 
 class EstadisticasScreen extends StatefulWidget {

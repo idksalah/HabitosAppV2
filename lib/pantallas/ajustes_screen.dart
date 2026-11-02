@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/usuario.dart';
-import '../services/preferencias_service.dart';
+import '../modelos/usuario.dart';
+import '../servicios/preferencias_service.dart';
 import 'login_page.dart';
 
 class AjustesScreen extends StatefulWidget {

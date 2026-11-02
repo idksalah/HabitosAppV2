@@ -4,14 +4,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/habito.dart';
+import '../modelos/habito.dart';
+import 'database_helper.dart';
 
 class PreferenciasService {
-  // Claves para guardar los datos.
+  // Claves para guardar los ajustes.
   static const String claveNombre = 'nombre';
   static const String claveObjetivo = 'objetivo';
-  static const String claveHabitos = 'habitos';
-  static const String claveNombresHabitos = 'nombresHabitos';
   static const String claveTemaOscuro = 'temaOscuro';
   static const String claveTamanoLetra = 'tamanoLetra';
   static const String claveOcultarCompletados = 'ocultarCompletados';
@@ -19,7 +18,7 @@ class PreferenciasService {
   static const String claveUltimaApertura = 'ultimaApertura';
   static const String claveAperturaAnterior = 'aperturaAnterior';
 
-  // Valores que utilizan las pantallas.
+  // Valores utilizados por las pantallas.
   static final ValueNotifier<ThemeMode> temaActual =
   ValueNotifier(ThemeMode.light);
 
@@ -36,7 +35,7 @@ class PreferenciasService {
     ocultarCompletados.value = false;
   }
 
-  // Cambia el tema de la aplicación.
+  // Cambia el tema.
   static Future<void> guardarTema(bool oscuro) async {
     temaActual.value =
     oscuro ? ThemeMode.dark : ThemeMode.light;
@@ -54,7 +53,7 @@ class PreferenciasService {
     ocultarCompletados.value = ocultar;
   }
 
-  // Guarda el nombre y el objetivo de un usuario.
+  // Guarda el nombre y el objetivo del usuario.
   static Future<void> guardarDatosUsuario(
       String usuarioId,
       String nombre,
@@ -74,7 +73,7 @@ class PreferenciasService {
     );
   }
 
-  // Recupera el nombre de un usuario.
+  // Recupera el nombre del usuario.
   static Future<String?> obtenerNombre(
       String usuarioId,
       ) async {
@@ -98,102 +97,217 @@ class PreferenciasService {
     );
   }
 
-  // Guarda los hábitos de un usuario.
+  // Convierte una fecha al formato año-mes-día.
+  static String formatoFecha(DateTime fecha) {
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final dia = fecha.day.toString().padLeft(2, '0');
+
+    return '${fecha.year}-$mes-$dia';
+  }
+
+  // Calcula la racha actual de un hábito.
+  static int calcularRacha(Habito habito) {
+    final fechas = habito.fechasCompletado.toSet();
+
+    final hoy = DateTime.now();
+
+    DateTime fecha = DateTime(
+      hoy.year,
+      hoy.month,
+      hoy.day,
+    );
+
+    // Si hoy no está completado, empezamos desde ayer.
+    if (!fechas.contains(formatoFecha(fecha))) {
+      fecha = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day - 1,
+      );
+    }
+
+    int racha = 0;
+
+    while (fechas.contains(formatoFecha(fecha))) {
+      racha++;
+
+      fecha = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day - 1,
+      );
+    }
+
+    return racha;
+  }
+
+  // Guarda los hábitos del usuario en SQLite.
   static Future<void> guardarHabitos(
       String usuarioId,
       List<Habito> habitos,
       ) async {
-    final preferencias =
-    await SharedPreferences.getInstance();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    final listaJson = <Map<String, dynamic>>[];
+    await db.transaction((transaccion) async {
+      // Recuperamos los hábitos que ya están guardados.
+      final anteriores = await transaccion.query(
+        'habitos',
+        columns: ['id'],
+        where: 'usuarioId = ?',
+        whereArgs: [usuarioId],
+      );
 
-    for (final habito in habitos) {
-      listaJson.add(habito.toJson());
-    }
+      // Eliminamos los hábitos que ya no están en la lista.
+      for (final anterior in anteriores) {
+        bool existe = false;
 
-    await preferencias.setString(
-      '${claveHabitos}_$usuarioId',
-      jsonEncode(listaJson),
-    );
+        for (final habito in habitos) {
+          if (habito.id == anterior['id']) {
+            existe = true;
+            break;
+          }
+        }
 
-    // Guarda también los nombres de los hábitos.
-    final List<String> nombres = [];
+        if (!existe) {
+          await transaccion.delete(
+            'habitos',
+            where: 'id = ? AND usuarioId = ?',
+            whereArgs: [anterior['id'], usuarioId],
+          );
+        }
+      }
 
-    for (final habito in habitos) {
-      nombres.add(habito.nombre);
-    }
+      // Guardamos cada hábito.
+      for (final habito in habitos) {
+        final datos = {
+          'id': habito.id,
+          'usuarioId': usuarioId,
+          'nombre': habito.nombre,
+          'color': habito.color,
+          'fechasCompletado':
+          jsonEncode(habito.fechasCompletado),
+        };
 
-    await preferencias.setStringList(
-      '${claveNombresHabitos}_$usuarioId',
-      nombres,
-    );
+        // Primero intentamos actualizarlo.
+        final actualizados = await transaccion.update(
+          'habitos',
+          datos,
+          where: 'id = ? AND usuarioId = ?',
+          whereArgs: [habito.id, usuarioId],
+        );
+
+        // Si no existía, lo insertamos.
+        if (actualizados == 0) {
+          await transaccion.insert(
+            'habitos',
+            datos,
+          );
+        }
+
+        // Preparamos las estadísticas del hábito.
+        final estadisticas = {
+          'habitoId': habito.id,
+          'rachaActual': calcularRacha(habito),
+          'diasCompletados':
+          habito.fechasCompletado.toSet().length,
+        };
+
+        // Actualizamos las estadísticas existentes.
+        final estadisticasActualizadas =
+        await transaccion.update(
+          'estadisticas',
+          estadisticas,
+          where: 'habitoId = ?',
+          whereArgs: [habito.id],
+        );
+
+        // Si no existen, las insertamos.
+        if (estadisticasActualizadas == 0) {
+          await transaccion.insert(
+            'estadisticas',
+            estadisticas,
+          );
+        }
+      }
+    });
   }
 
-  // Recupera los hábitos de un usuario.
+  // Recupera los hábitos del usuario desde SQLite.
   static Future<List<Habito>> obtenerHabitos(
       String usuarioId,
       ) async {
-    final preferencias =
-    await SharedPreferences.getInstance();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    final textoJson = preferencias.getString(
-      '${claveHabitos}_$usuarioId',
+    final datos = await db.query(
+      'habitos',
+      where: 'usuarioId = ?',
+      whereArgs: [usuarioId],
+      orderBy: 'nombre',
     );
-
-    if (textoJson == null || textoJson.isEmpty) {
-      return [];
-    }
-
-    final List<dynamic> listaJson = jsonDecode(textoJson);
 
     final List<Habito> habitos = [];
 
-    for (final elemento in listaJson) {
-      habitos.add(
-        Habito.fromJson(
-          Map<String, dynamic>.from(elemento),
-        ),
-      );
+    for (final elemento in datos) {
+      final mapa = Map<String, dynamic>.from(elemento);
+
+      // Las fechas están guardadas como texto JSON.
+      mapa['fechasCompletado'] =
+          jsonDecode(mapa['fechasCompletado'] as String);
+
+      habitos.add(Habito.fromJson(mapa));
     }
 
     return habitos;
   }
 
-  // Recupera los nombres de los hábitos.
+  // Recupera los nombres de los hábitos desde SQLite.
   static Future<List<String>> obtenerNombresHabitos(
       String usuarioId,
       ) async {
-    final preferencias =
-    await SharedPreferences.getInstance();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    return preferencias.getStringList(
-      '${claveNombresHabitos}_$usuarioId',
-    ) ??
-        [];
+    final datos = await db.query(
+      'habitos',
+      columns: ['nombre'],
+      where: 'usuarioId = ?',
+      whereArgs: [usuarioId],
+      orderBy: 'nombre',
+    );
+
+    final List<String> nombres = [];
+
+    for (final elemento in datos) {
+      nombres.add(elemento['nombre'] as String);
+    }
+
+    return nombres;
   }
 
-  // Borra los datos y ajustes de un usuario.
+  // Borra los hábitos y ajustes de un usuario.
   static Future<void> eliminarDatosUsuario(
       String usuarioId,
       ) async {
+    final db = await DatabaseHelper.obtenerBaseDatos();
+
+    // Eliminamos sus hábitos de SQLite.
+    // Sus estadísticas se eliminan automáticamente
+    // por la relación ON DELETE CASCADE.
+    await db.delete(
+      'habitos',
+      where: 'usuarioId = ?',
+      whereArgs: [usuarioId],
+    );
+
     final preferencias =
     await SharedPreferences.getInstance();
 
+    // Eliminamos sus ajustes personales.
     await preferencias.remove(
       '${claveNombre}_$usuarioId',
     );
 
     await preferencias.remove(
       '${claveObjetivo}_$usuarioId',
-    );
-
-    await preferencias.remove(
-      '${claveHabitos}_$usuarioId',
-    );
-
-    await preferencias.remove(
-      '${claveNombresHabitos}_$usuarioId',
     );
 
     await preferencias.remove(
@@ -222,7 +336,7 @@ class PreferenciasService {
         objetivo > 0;
   }
 
-  // Registra una nueva apertura de la aplicación.
+  // Registra una apertura de la aplicación.
   static Future<void> registrarApertura() async {
     final preferencias =
     await SharedPreferences.getInstance();
@@ -281,7 +395,7 @@ class PreferenciasService {
     );
   }
 
-  // Borra todos los datos guardados en SharedPreferences.
+  // Borra las preferencias generales del dispositivo.
   static Future<void> borrarDatos() async {
     final preferencias =
     await SharedPreferences.getInstance();

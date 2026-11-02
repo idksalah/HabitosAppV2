@@ -1,9 +1,9 @@
 
 import 'package:flutter/material.dart';
 
-import 'screens/login_page.dart';
-import 'services/preferencias_service.dart';
-import 'services/usuarios_service.dart';
+import 'pantallas/login_page.dart';
+import 'servicios/preferencias_service.dart';
+import 'servicios/usuarios_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
