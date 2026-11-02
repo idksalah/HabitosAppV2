@@ -262,7 +262,10 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
   Future<void> editarHabito(Habito habito) async {
     if (!await tienePermisos()) return;
 
+    if (!mounted) return;
+
     final usuarioId = propietarios[habito.id];
+
 
     if (usuarioId == null) return;
 

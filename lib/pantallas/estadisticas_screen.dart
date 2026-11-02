@@ -36,13 +36,21 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     cargarEstadisticas();
   }
 
-  // Recupera los hábitos y estadísticas guardadas.
+  // Recupera los hábitos y estadísticas del usuario.
   Future<void> cargarEstadisticas() async {
     final lista = await PreferenciasService.obtenerHabitos(
       widget.usuario.id,
     );
 
-    final datos = await EstadisticasService.obtenerTodas();
+    // Actualizamos las rachas si ha cambiado el día.
+    await PreferenciasService.actualizarRachas(
+      widget.usuario.id,
+    );
+
+    // Recuperamos las estadísticas desde SQLite.
+    final datos = await EstadisticasService.obtenerPorUsuario(
+      widget.usuario.id,
+    );
 
     final totalAperturas =
     await PreferenciasService.obtenerAperturas();

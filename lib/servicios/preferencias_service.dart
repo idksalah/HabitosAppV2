@@ -140,6 +140,39 @@ class PreferenciasService {
     return racha;
   }
 
+  // Actualiza las rachas cuando cambia el día.
+  static Future<void> actualizarRachas(String usuarioId) async {
+    final preferencias = await SharedPreferences.getInstance();
+
+    final hoy = formatoFecha(DateTime.now());
+    final clave = 'ultimaRevisionRachas_$usuarioId';
+
+    // Si ya hemos revisado las rachas hoy, no repetimos.
+    if (preferencias.getString(clave) == hoy) {
+      return;
+    }
+
+    final db = await DatabaseHelper.obtenerBaseDatos();
+
+    // Recuperamos los hábitos del usuario.
+    final lista = await obtenerHabitos(usuarioId);
+
+    for (final habito in lista) {
+      final racha = calcularRacha(habito);
+
+      // Actualizamos la racha en SQLite.
+      await db.update(
+        'estadisticas',
+        {'rachaActual': racha},
+        where: 'habitoId = ?',
+        whereArgs: [habito.id],
+      );
+    }
+
+    // Guardamos la fecha de la última revisión.
+    await preferencias.setString(clave, hoy);
+  }
+
   // Guarda los hábitos del usuario en SQLite.
   static Future<void> guardarHabitos(
       String usuarioId,

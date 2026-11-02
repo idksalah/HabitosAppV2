@@ -85,6 +85,11 @@ class _AdminEstadisticasPageState extends State<AdminEstadisticasPage> {
     final Map<String, String> listaPropietarios = {};
 
     for (final usuario in listaUsuarios) {
+      // Actualizamos las rachas si ha cambiado el día.
+      await PreferenciasService.actualizarRachas(
+        usuario.id,
+      );
+
       final lista = await PreferenciasService.obtenerHabitos(
         usuario.id,
       );
@@ -96,7 +101,9 @@ class _AdminEstadisticasPageState extends State<AdminEstadisticasPage> {
     }
 
     final listaEstadisticas =
-    await EstadisticasService.obtenerTodas();
+    await EstadisticasService.obtenerTodas(
+      widget.usuario.id,
+    );
 
     if (!mounted) return;
 
@@ -307,6 +314,7 @@ class _AdminEstadisticasPageState extends State<AdminEstadisticasPage> {
     if (!await tienePermisos()) return;
 
     await EstadisticasService.crear(
+      widget.usuario.id,
       habitoId,
       datos['racha']!,
       datos['dias']!,
@@ -336,6 +344,7 @@ class _AdminEstadisticasPageState extends State<AdminEstadisticasPage> {
     if (!await tienePermisos()) return;
 
     await EstadisticasService.actualizar(
+      widget.usuario.id,
       habitoId,
       datos['racha']!,
       datos['dias']!,
@@ -387,7 +396,9 @@ class _AdminEstadisticasPageState extends State<AdminEstadisticasPage> {
     // Comprobamos los permisos antes de eliminar.
     if (!await tienePermisos()) return;
 
-    await EstadisticasService.eliminar(habitoId);
+    await EstadisticasService.eliminar(
+        widget.usuario.id,
+        habitoId);
 
     if (!mounted) return;
 

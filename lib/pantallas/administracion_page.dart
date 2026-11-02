@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../modelos/usuario.dart';
@@ -5,6 +6,7 @@ import '../servicios/usuarios_service.dart';
 import '../servicios/preferencias_service.dart';
 import '../widgets/boton_principal.dart';
 import '../widgets/campo_texto_app.dart';
+
 import 'admin_habitos_page.dart';
 import 'admin_estadisticas_page.dart';
 import 'login_page.dart';
@@ -35,9 +37,11 @@ class AdministracionPageState extends State<AdministracionPage> {
     comprobarPermisos();
   }
 
-  // Comprueba si el usuario tiene permiso de administrador.
+  // Comprueba si el usuario es administrador.
   Future<void> comprobarPermisos() async {
-    final permiso = await UsuariosService.esAdministrador(widget.usuario.id);
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
 
     if (!mounted) return;
 
@@ -54,7 +58,7 @@ class AdministracionPageState extends State<AdministracionPage> {
     }
   }
 
-  // Recupera los usuarios de la base de datos.
+  // Recupera los usuarios desde SQLite.
   Future<void> cargarUsuarios() async {
     final lista = await UsuariosService.obtenerUsuarios();
 
@@ -66,28 +70,53 @@ class AdministracionPageState extends State<AdministracionPage> {
     });
   }
 
+  // Muestra un mensaje.
   void mostrarMensaje(String mensaje) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje)),
     );
   }
 
+  // Abre la pantalla para crear un usuario.
   Future<void> crearUsuario() async {
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
+
+    if (!mounted || !permiso) return;
+
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const RegistroPage()),
+      MaterialPageRoute(
+        builder: (context) => const RegistroPage(),
+      ),
     );
 
     if (!mounted) return;
+
     await cargarUsuarios();
   }
 
+  // Edita los datos de un usuario.
   Future<void> editarUsuario(Usuario usuario) async {
-    final usuarioController = TextEditingController(text: usuario.usuario);
-    final nombreController = TextEditingController(text: usuario.nombre);
-    final apellidosController = TextEditingController(text: usuario.apellidos);
-    final correoController = TextEditingController(text: usuario.correo);
+    final usuarioController = TextEditingController(
+      text: usuario.usuario,
+    );
+
+    final nombreController = TextEditingController(
+      text: usuario.nombre,
+    );
+
+    final apellidosController = TextEditingController(
+      text: usuario.apellidos,
+    );
+
+    final correoController = TextEditingController(
+      text: usuario.correo,
+    );
+
     final contrasenaController = TextEditingController();
 
     String rolSeleccionado = usuario.rol;
@@ -111,32 +140,43 @@ class AdministracionPageState extends State<AdministracionPage> {
                         pista: 'Nombre de usuario',
                         controlador: usuarioController,
                       ),
+
                       const SizedBox(height: 12),
+
                       CampoTextoApp(
                         texto: 'Nombre',
                         pista: 'Nombre',
                         controlador: nombreController,
                       ),
+
                       const SizedBox(height: 12),
+
                       CampoTextoApp(
                         texto: 'Apellidos',
                         pista: 'Apellidos',
                         controlador: apellidosController,
                       ),
+
                       const SizedBox(height: 12),
+
                       CampoTextoApp(
                         texto: 'Correo',
                         pista: 'Correo electrónico',
                         controlador: correoController,
                       ),
+
                       const SizedBox(height: 12),
+
                       CampoTextoApp(
                         texto: 'Nueva contraseña (opcional)',
                         pista: 'Déjala vacía para conservar la actual',
                         controlador: contrasenaController,
                         ocultarTexto: true,
                       ),
+
                       const SizedBox(height: 12),
+
+                      // Permite cambiar el rol del usuario.
                       DropdownButtonFormField<String>(
                         initialValue: rolSeleccionado,
                         decoration: const InputDecoration(
@@ -156,27 +196,35 @@ class AdministracionPageState extends State<AdministracionPage> {
                         onChanged: usuario.id == widget.usuario.id
                             ? null
                             : (valor) {
-                                if (valor != null) {
-                                  actualizarDialogo(() {
-                                    rolSeleccionado = valor;
-                                  });
-                                }
-                              },
+                          if (valor != null) {
+                            actualizarDialogo(() {
+                              rolSeleccionado = valor;
+                            });
+                          }
+                        },
                       ),
+
                       const SizedBox(height: 12),
+
                       Text(
                         mensaje,
-                        style: const TextStyle(color: Colors.red),
+                        style: const TextStyle(
+                          color: Colors.red,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
+
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
+                  onPressed: () {
+                    Navigator.pop(dialogContext, false);
+                  },
                   child: const Text('Cancelar'),
                 ),
+
                 ElevatedButton(
                   onPressed: () {
                     if (usuarioController.text.trim().isEmpty ||
@@ -188,6 +236,7 @@ class AdministracionPageState extends State<AdministracionPage> {
                       });
                       return;
                     }
+
                     Navigator.pop(dialogContext, true);
                   },
                   child: const Text('Guardar'),
@@ -200,12 +249,14 @@ class AdministracionPageState extends State<AdministracionPage> {
     );
 
     if (guardar == true && mounted) {
+      // Comprobamos que no exista otro usuario con
+      // el mismo nombre de usuario o correo.
       bool repetido = false;
 
       for (final elemento in usuarios) {
         if (elemento.id != usuario.id &&
             (elemento.usuario.toLowerCase() ==
-                    usuarioController.text.trim().toLowerCase() ||
+                usuarioController.text.trim().toLowerCase() ||
                 elemento.correo.toLowerCase() ==
                     correoController.text.trim().toLowerCase())) {
           repetido = true;
@@ -215,17 +266,31 @@ class AdministracionPageState extends State<AdministracionPage> {
       if (repetido) {
         mostrarMensaje('El usuario o el correo ya existe');
       } else {
-        usuario.usuario = usuarioController.text.trim();
-        usuario.nombre = nombreController.text.trim();
-        usuario.apellidos = apellidosController.text.trim();
-        usuario.correo = correoController.text.trim();
-        usuario.rol = rolSeleccionado;
-        if (contrasenaController.text.isNotEmpty) {
-          usuario.contrasena = contrasenaController.text;
-        }
+        // Comprobamos los permisos antes de guardar.
+        final permiso = await UsuariosService.esAdministrador(
+          widget.usuario.id,
+        );
 
-        await UsuariosService.guardarUsuarios(usuarios);
-        if (mounted) await cargarUsuarios();
+        if (mounted && permiso) {
+          usuario.usuario = usuarioController.text.trim();
+          usuario.nombre = nombreController.text.trim();
+          usuario.apellidos = apellidosController.text.trim();
+          usuario.correo = correoController.text.trim();
+          usuario.rol = rolSeleccionado;
+
+          if (contrasenaController.text.isNotEmpty) {
+            usuario.contrasena = contrasenaController.text;
+          }
+
+          await UsuariosService.guardarUsuarios(
+            widget.usuario.id,
+            usuarios,
+          );
+
+          if (mounted) {
+            await cargarUsuarios();
+          }
+        }
       }
     }
 
@@ -236,20 +301,28 @@ class AdministracionPageState extends State<AdministracionPage> {
     contrasenaController.dispose();
   }
 
+  // Elimina un usuario después de pedir confirmación.
   Future<void> eliminarUsuario(Usuario usuario) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Eliminar usuario'),
-          content: Text('¿Quieres eliminar a ${usuario.nombre}?'),
+          content: Text(
+            '¿Quieres eliminar a ${usuario.nombre}?',
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
               child: const Text('Cancelar'),
             ),
+
             ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
               child: const Text('Eliminar'),
             ),
           ],
@@ -259,22 +332,46 @@ class AdministracionPageState extends State<AdministracionPage> {
 
     if (!mounted || confirmar != true) return;
 
-    final permiso = await UsuariosService.esAdministrador(widget.usuario.id);
-    if (!permiso) return;
+    // Comprobamos los permisos.
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
 
-    final eliminado = await UsuariosService.eliminarUsuario(usuario.id);
-    if (!eliminado) return;
+    if (!mounted || !permiso) return;
 
-    await PreferenciasService.eliminarDatosUsuario(usuario.id);
-    if (mounted) await cargarUsuarios();
+    // Eliminamos el usuario de SQLite.
+    final eliminado = await UsuariosService.eliminarUsuario(
+      widget.usuario.id,
+      usuario.id,
+    );
+
+    if (!mounted) return;
+
+    if (!eliminado) {
+      mostrarMensaje('No se ha podido eliminar el usuario');
+      return;
+    }
+
+    // Eliminamos sus ajustes personales.
+    await PreferenciasService.eliminarDatosUsuario(
+      usuario.id,
+    );
+
+    if (!mounted) return;
+
+    await cargarUsuarios();
+
+    mostrarMensaje('Usuario eliminado correctamente');
   }
 
-  // Abre la gestión de hábitos de todos los usuarios.
+  // Abre la gestión de hábitos.
   void abrirHabitos() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminHabitosPage(usuario: widget.usuario),
+        builder: (context) => AdminHabitosPage(
+          usuario: widget.usuario,
+        ),
       ),
     );
   }
@@ -284,11 +381,14 @@ class AdministracionPageState extends State<AdministracionPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminEstadisticasPage(usuario: widget.usuario),
+        builder: (context) => AdminEstadisticasPage(
+          usuario: widget.usuario,
+        ),
       ),
     );
   }
 
+  // Cierra la sesión del administrador.
   void cerrarSesion() {
     PreferenciasService.temaActual.value = ThemeMode.light;
     PreferenciasService.tamanoLetra.value = 1.0;
@@ -296,11 +396,14 @@ class AdministracionPageState extends State<AdministracionPage> {
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+          (route) => false,
     );
   }
 
+  // Construye la lista de usuarios.
   Widget construirUsuarios() {
     return Column(
       children: [
@@ -311,43 +414,60 @@ class AdministracionPageState extends State<AdministracionPage> {
             accion: crearUsuario,
           ),
         ),
+
         Expanded(
           child: usuarios.isEmpty
-              ? const Center(child: Text('No hay usuarios'))
+              ? const Center(
+            child: Text('No hay usuarios'),
+          )
               : ListView.builder(
-                  itemCount: usuarios.length,
-                  itemBuilder: (context, index) {
-                    final usuario = usuarios[index];
-                    return Card(
-                      margin: const EdgeInsets.all(8),
-                      child: ListTile(
-                        leading: const Icon(Icons.person),
-                        title: Text('${usuario.nombre} ${usuario.apellidos}'),
-                        subtitle: Text(
-                          'Usuario: ${usuario.usuario}\n'
-                          'Correo: ${usuario.correo}\n'
-                          'Rol: ${usuario.rol}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Editar usuario',
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => editarUsuario(usuario),
-                            ),
-                            if (usuario.rol != 'admin')
-                              IconButton(
-                                tooltip: 'Eliminar usuario',
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => eliminarUsuario(usuario),
-                              ),
-                          ],
-                        ),
+            itemCount: usuarios.length,
+            itemBuilder: (context, index) {
+              final usuario = usuarios[index];
+
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  leading: const Icon(Icons.person),
+
+                  title: Text(
+                    '${usuario.nombre} ${usuario.apellidos}',
+                  ),
+
+                  subtitle: Text(
+                    'Usuario: ${usuario.usuario}\n'
+                        'Correo: ${usuario.correo}\n'
+                        'Rol: ${usuario.rol}',
+                  ),
+
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Editar usuario',
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          editarUsuario(usuario);
+                        },
                       ),
-                    );
-                  },
+
+                      if (usuario.rol != 'admin')
+                        IconButton(
+                          tooltip: 'Eliminar usuario',
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.red,
+                          ),
+                          onPressed: () {
+                            eliminarUsuario(usuario);
+                          },
+                        ),
+                    ],
+                  ),
                 ),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -357,14 +477,20 @@ class AdministracionPageState extends State<AdministracionPage> {
   Widget build(BuildContext context) {
     if (cargando) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     if (!esAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Acceso denegado')),
-        body: const Center(child: Text('No tienes permisos para acceder')),
+        appBar: AppBar(
+          title: const Text('Acceso denegado'),
+        ),
+        body: const Center(
+          child: Text('No tienes permisos para acceder'),
+        ),
       );
     }
 
@@ -379,6 +505,7 @@ class AdministracionPageState extends State<AdministracionPage> {
           ),
         ],
       ),
+
       body: Column(
         children: [
           Padding(
@@ -389,7 +516,9 @@ class AdministracionPageState extends State<AdministracionPage> {
                   texto: 'Gestionar hábitos',
                   accion: abrirHabitos,
                 ),
+
                 const SizedBox(height: 8),
+
                 BotonPrincipal(
                   texto: 'Gestionar estadísticas',
                   accion: abrirEstadisticas,
@@ -397,8 +526,12 @@ class AdministracionPageState extends State<AdministracionPage> {
               ],
             ),
           ),
+
           const Divider(),
-          Expanded(child: construirUsuarios()),
+
+          Expanded(
+            child: construirUsuarios(),
+          ),
         ],
       ),
     );

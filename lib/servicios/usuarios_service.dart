@@ -25,30 +25,6 @@ class UsuariosService {
     return usuarios;
   }
 
-  // Guarda los cambios de los usuarios.
-  static Future<void> guardarUsuarios(
-      List<Usuario> usuarios,
-      ) async {
-    final db = await DatabaseHelper.obtenerBaseDatos();
-
-    for (final usuario in usuarios) {
-      final filas = await db.update(
-        'usuarios',
-        usuario.toJson(),
-        where: 'id = ?',
-        whereArgs: [usuario.id],
-      );
-
-      // Si el usuario no existe, lo añadimos.
-      if (filas == 0) {
-        await db.insert(
-          'usuarios',
-          usuario.toJson(),
-        );
-      }
-    }
-  }
-
   // Busca un usuario por su identificador.
   static Future<Usuario?> obtenerUsuarioPorId(String id) async {
     final db = await DatabaseHelper.obtenerBaseDatos();
@@ -75,8 +51,47 @@ class UsuariosService {
     return usuario != null && usuario.rol == 'admin';
   }
 
+  // Guarda los cambios realizados por el administrador.
+  static Future<void> guardarUsuarios(
+      String administradorId,
+      List<Usuario> usuarios,
+      ) async {
+
+    // Comprobamos los permisos.
+    final permiso = await esAdministrador(administradorId);
+
+    if (!permiso) {
+      throw Exception('No tienes permisos de administrador');
+    }
+
+    final db = await DatabaseHelper.obtenerBaseDatos();
+
+    for (final usuario in usuarios) {
+      final filas = await db.update(
+        'usuarios',
+        usuario.toJson(),
+        where: 'id = ?',
+        whereArgs: [usuario.id],
+      );
+
+      // Si no existe, lo añadimos.
+      if (filas == 0) {
+        await db.insert(
+          'usuarios',
+          usuario.toJson(),
+        );
+      }
+    }
+  }
+
   // Registra un usuario nuevo.
   static Future<bool> registrarUsuario(Usuario usuario) async {
+
+    // El registro normal solo puede crear usuarios.
+    if (usuario.rol != 'usuario') {
+      return false;
+    }
+
     final db = await DatabaseHelper.obtenerBaseDatos();
 
     final usuarios = await obtenerUsuarios();
@@ -91,7 +106,7 @@ class UsuariosService {
       }
     }
 
-    // Insertamos el usuario en la tabla.
+    // Insertamos el usuario en SQLite.
     final resultado = await db.insert(
       'usuarios',
       usuario.toJson(),
@@ -120,7 +135,18 @@ class UsuariosService {
   }
 
   // Elimina un usuario de la base de datos.
-  static Future<bool> eliminarUsuario(String id) async {
+  static Future<bool> eliminarUsuario(
+      String administradorId,
+      String id,
+      ) async {
+
+    // Comprobamos los permisos.
+    final permiso = await esAdministrador(administradorId);
+
+    if (!permiso) {
+      return false;
+    }
+
     final db = await DatabaseHelper.obtenerBaseDatos();
 
     final usuario = await obtenerUsuarioPorId(id);
@@ -139,7 +165,7 @@ class UsuariosService {
     return resultado > 0;
   }
 
-  // Crea el administrador si todavía no existe.
+  // Crea el administrador inicial si todavía no existe.
   static Future<void> crearAdministradorInicial() async {
     final usuarios = await obtenerUsuarios();
 
@@ -161,6 +187,13 @@ class UsuariosService {
       fechaCreacion: DateTime.now(),
     );
 
-    await registrarUsuario(administrador);
+    // El administrador inicial se crea directamente en SQLite.
+    final db = await DatabaseHelper.obtenerBaseDatos();
+
+    await db.insert(
+      'usuarios',
+      administrador.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 }
