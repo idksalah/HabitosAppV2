@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../modelos/habito.dart';
 import '../modelos/usuario.dart';
 import '../servicios/preferencias_service.dart';
+import '../servicios/estadisticas_service.dart';
 import '../widgets/dato_estadistica.dart';
 
 class EstadisticasScreen extends StatefulWidget {
@@ -22,6 +23,8 @@ class EstadisticasScreen extends StatefulWidget {
 
 class _EstadisticasScreenState extends State<EstadisticasScreen> {
   List<Habito> habitos = [];
+  List<Map<String, Object?>> estadisticas = [];
+
   bool cargando = true;
 
   int aperturas = 0;
@@ -33,11 +36,13 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     cargarEstadisticas();
   }
 
-  // Recupera las estadísticas del usuario.
+  // Recupera los hábitos y estadísticas guardadas.
   Future<void> cargarEstadisticas() async {
     final lista = await PreferenciasService.obtenerHabitos(
       widget.usuario.id,
     );
+
+    final datos = await EstadisticasService.obtenerTodas();
 
     final totalAperturas =
     await PreferenciasService.obtenerAperturas();
@@ -49,57 +54,22 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
 
     setState(() {
       habitos = lista;
+      estadisticas = datos;
       aperturas = totalAperturas;
       aperturaAnterior = fechaAnterior;
       cargando = false;
     });
   }
 
-  // Convierte una fecha al formato año-mes-día.
-  String formatoFecha(DateTime fecha) {
-    final mes = fecha.month.toString().padLeft(2, '0');
-    final dia = fecha.day.toString().padLeft(2, '0');
-
-    return '${fecha.year}-$mes-$dia';
-  }
-
-  // Calcula la racha actual de un hábito.
-  int calcularRacha(Habito habito) {
-    if (habito.fechasCompletado.isEmpty) {
-      return 0;
+  // Busca las estadísticas de un hábito.
+  Map<String, Object?>? buscarEstadistica(Habito habito) {
+    for (final dato in estadisticas) {
+      if (dato['habitoId'] == habito.id) {
+        return dato;
+      }
     }
 
-    final fechas = habito.fechasCompletado.toSet();
-    final hoy = DateTime.now();
-
-    DateTime fecha = DateTime(
-      hoy.year,
-      hoy.month,
-      hoy.day,
-    );
-
-    // Si hoy no está completado, empezamos desde ayer.
-    if (!fechas.contains(formatoFecha(fecha))) {
-      fecha = DateTime(
-        fecha.year,
-        fecha.month,
-        fecha.day - 1,
-      );
-    }
-
-    int racha = 0;
-
-    while (fechas.contains(formatoFecha(fecha))) {
-      racha++;
-
-      fecha = DateTime(
-        fecha.year,
-        fecha.month,
-        fecha.day - 1,
-      );
-    }
-
-    return racha;
+    return null;
   }
 
   // Muestra una fecha de forma más clara.
@@ -121,6 +91,67 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     final minuto = fecha.minute.toString().padLeft(2, '0');
 
     return '$dia/$mes/$anio a las $hora:$minuto';
+  }
+
+  // Muestra las estadísticas de cada hábito.
+  Widget mostrarEstadisticaHabito(Habito habito) {
+    final datos = buscarEstadistica(habito);
+
+    final int? dias = datos?['diasCompletados'] as int?;
+    final int? racha = datos?['rachaActual'] as int?;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // Nombre del hábito.
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Color(habito.color),
+                  child: const Icon(
+                    Icons.water_drop,
+                    color: Colors.white,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    habito.nombre,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Total de días completados.
+            DatoEstadistica(
+              titulo: 'Días completados',
+              valor: dias == null ? 'Sin datos' : '$dias',
+              icono: Icons.check_circle,
+              color: Colors.green,
+            ),
+
+            // Racha actual.
+            DatoEstadistica(
+              titulo: 'Racha actual',
+              valor: racha == null ? 'Sin datos' : '$racha días',
+              icono: Icons.local_fire_department,
+              color: Colors.orange,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -190,59 +221,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
             )
           else
             for (final habito in habitos)
-              Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      // Nombre del hábito.
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Color(habito.color),
-                            child: const Icon(
-                              Icons.water_drop,
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          Expanded(
-                            child: Text(
-                              habito.nombre,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Componente reutilizable.
-                      DatoEstadistica(
-                        titulo: 'Días completados',
-                        valor:
-                        '${habito.fechasCompletado.toSet().length}',
-                        icono: Icons.check_circle,
-                        color: Colors.green,
-                      ),
-
-                      // Utilizamos el mismo componente.
-                      DatoEstadistica(
-                        titulo: 'Racha actual',
-                        valor: '${calcularRacha(habito)} días',
-                        icono: Icons.local_fire_department,
-                        color: Colors.orange,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              mostrarEstadisticaHabito(habito),
         ],
       ),
     );

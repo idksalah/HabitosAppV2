@@ -66,19 +66,26 @@ class _InicioScreenState extends State<InicioScreen> {
   Future<void> cargarPerfil() async {
     final id = widget.usuario.id;
 
-    String? nombre =
+    final nombreGuardado =
     await PreferenciasService.obtenerNombre(id);
 
-    int? objetivo =
+    final objetivoGuardado =
     await PreferenciasService.obtenerObjetivo(id);
 
-    if (nombre == null ||
-        nombre.isEmpty ||
-        objetivo == null ||
-        objetivo <= 0) {
-      nombre = widget.usuario.nombre;
-      objetivo = 3;
+    // Si falta un dato, usamos solo su valor por defecto.
+    final nombre = nombreGuardado == null || nombreGuardado.isEmpty
+        ? widget.usuario.nombre
+        : nombreGuardado;
 
+    final objetivo = objetivoGuardado == null || objetivoGuardado <= 0
+        ? 3
+        : objetivoGuardado;
+
+    // Guardamos los valores por defecto si faltaba algún dato.
+    if (nombreGuardado == null ||
+        nombreGuardado.isEmpty ||
+        objetivoGuardado == null ||
+        objetivoGuardado <= 0) {
       await PreferenciasService.guardarDatosUsuario(
         id,
         nombre,
@@ -89,8 +96,8 @@ class _InicioScreenState extends State<InicioScreen> {
     if (!mounted) return;
 
     setState(() {
-      nombreActual = nombre!;
-      objetivoActual = objetivo!;
+      nombreActual = nombre;
+      objetivoActual = objetivo;
     });
   }
 
@@ -191,7 +198,7 @@ class _InicioScreenState extends State<InicioScreen> {
       int color,
       ) async {
     final nuevoHabito = Habito(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
       nombre: nombre,
       color: color,
     );

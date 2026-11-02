@@ -80,7 +80,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     await PreferenciasService.guardarTamanoLetra(tamano);
   }
 
-  // Guarda si se ocultan los hábitos completados.
+  // Guarda si queremos ocultar hábitos completados.
   Future<void> guardarOcultarCompletados(bool ocultar) async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -92,12 +92,13 @@ class _AjustesScreenState extends State<AjustesScreen> {
     await PreferenciasService.guardarOcultarCompletados(ocultar);
   }
 
-  // Borra los datos personales del usuario.
+  // Borra los hábitos y ajustes del usuario.
   Future<void> borrarDatosUsuario() async {
     final id = widget.usuario.id;
 
     await PreferenciasService.eliminarDatosUsuario(id);
 
+    // Restablecemos los ajustes.
     PreferenciasService.temaActual.value = ThemeMode.light;
     PreferenciasService.tamanoLetra.value = 1.0;
     PreferenciasService.ocultarCompletados.value = false;
@@ -122,6 +123,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
               },
               child: const Text('Cancelar'),
             ),
+
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(dialogContext, true);
@@ -135,6 +137,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
 
     if (!mounted || confirmar != true) return;
 
+    // Borramos los datos confirmados.
     await borrarDatosUsuario();
 
     if (!mounted) return;
@@ -155,6 +158,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
       appBar: AppBar(
         title: const Text('Ajustes'),
       ),
+
       body: cargando
           ? const Center(
         child: CircularProgressIndicator(),

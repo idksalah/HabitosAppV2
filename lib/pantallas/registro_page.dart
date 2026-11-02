@@ -42,6 +42,7 @@ class RegistroPageState extends State<RegistroPage> {
     final correo = correoController.text.trim();
     final contrasena = contrasenaController.text;
 
+    // Comprobamos que todos los campos estén completos.
     if (usuarioTexto.isEmpty ||
         nombre.isEmpty ||
         apellidos.isEmpty ||
@@ -53,7 +54,15 @@ class RegistroPageState extends State<RegistroPage> {
       return;
     }
 
-    // Comprobamos que el usuario no exista.
+    // Comprobamos que el correo tenga un formato básico.
+    if (!correo.contains('@') || !correo.contains('.')) {
+      setState(() {
+        mensaje = 'Introduce un correo válido';
+      });
+      return;
+    }
+
+    // Comprobamos que no exista el usuario o el correo.
     final usuarios = await UsuariosService.obtenerUsuarios();
 
     if (!mounted) return;
@@ -63,6 +72,14 @@ class RegistroPageState extends State<RegistroPage> {
           usuarioTexto.toLowerCase()) {
         setState(() {
           mensaje = 'Este nombre de usuario ya existe';
+        });
+        return;
+      }
+
+      if (elemento.correo.toLowerCase() ==
+          correo.toLowerCase()) {
+        setState(() {
+          mensaje = 'Este correo ya está registrado';
         });
         return;
       }
@@ -80,7 +97,7 @@ class RegistroPageState extends State<RegistroPage> {
       fechaCreacion: DateTime.now(),
     );
 
-    // Guardamos el usuario.
+    // Guardamos el usuario mediante el servicio SQLite.
     final registrado =
     await UsuariosService.registrarUsuario(nuevoUsuario);
 
@@ -90,7 +107,7 @@ class RegistroPageState extends State<RegistroPage> {
       final preferencias =
       await SharedPreferences.getInstance();
 
-      // Ajustes iniciales del usuario.
+      // Guardamos los ajustes iniciales del usuario.
       await preferencias.setBool(
         'temaOscuro_${nuevoUsuario.id}',
         false,
@@ -108,16 +125,11 @@ class RegistroPageState extends State<RegistroPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Usuario registrado correctamente'),
-        ),
-      );
-
-      Navigator.pop(context);
+      // Volvemos al inicio de sesión.
+      Navigator.pop(context, true);
     } else {
       setState(() {
-        mensaje = 'Este correo ya está registrado';
+        mensaje = 'El usuario o correo ya está registrado';
       });
     }
   }
@@ -129,6 +141,7 @@ class RegistroPageState extends State<RegistroPage> {
     apellidosController.dispose();
     correoController.dispose();
     contrasenaController.dispose();
+
     super.dispose();
   }
 
@@ -138,10 +151,13 @@ class RegistroPageState extends State<RegistroPage> {
       appBar: AppBar(
         title: const Text('Crear cuenta'),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
+
         child: Column(
           children: [
+            // Nombre de usuario.
             CampoTextoApp(
               texto: 'Usuario',
               pista: 'Introduce tu nombre de usuario',
@@ -150,6 +166,7 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 20),
 
+            // Nombre.
             CampoTextoApp(
               texto: 'Nombre',
               pista: 'Introduce tu nombre',
@@ -158,6 +175,7 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 20),
 
+            // Apellidos.
             CampoTextoApp(
               texto: 'Apellidos',
               pista: 'Introduce tus apellidos',
@@ -166,6 +184,7 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 20),
 
+            // Correo electrónico.
             CampoTextoApp(
               texto: 'Correo electrónico',
               pista: 'Introduce tu correo',
@@ -174,6 +193,7 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 20),
 
+            // Contraseña oculta.
             CampoTextoApp(
               texto: 'Contraseña',
               pista: 'Crea una contraseña',
@@ -183,6 +203,7 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 20),
 
+            // Botón reutilizable.
             BotonPrincipal(
               texto: 'Registrarse',
               accion: registrar,
@@ -190,9 +211,12 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 10),
 
+            // Mensaje de error.
             Text(
               mensaje,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(
+                color: Colors.red,
+              ),
             ),
 
             const SizedBox(height: 10),

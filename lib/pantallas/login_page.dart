@@ -6,6 +6,7 @@ import '../widgets/campo_texto_app.dart';
 import '../widgets/boton_principal.dart';
 import '../servicios/usuarios_service.dart';
 import '../servicios/preferencias_service.dart';
+
 import 'registro_page.dart';
 import 'inicio_screen.dart';
 import 'administracion_page.dart';
@@ -45,7 +46,6 @@ class LoginPageState extends State<LoginPage> {
     oscuro ? ThemeMode.dark : ThemeMode.light;
 
     PreferenciasService.tamanoLetra.value = tamano;
-
     PreferenciasService.ocultarCompletados.value = ocultar;
   }
 
@@ -61,6 +61,7 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
+    // Consultamos el usuario en SQLite mediante el servicio.
     final usuario = await UsuariosService.iniciarSesion(
       nombreUsuario,
       contrasena,
@@ -75,7 +76,7 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Cargamos los ajustes del usuario.
+    // Cargamos sus ajustes personales.
     await cargarAjustesUsuario(usuario.id);
 
     if (!mounted) return;
@@ -91,7 +92,7 @@ class LoginPageState extends State<LoginPage> {
         ),
       );
     } else {
-      // Recuperamos los datos del usuario.
+      // Recuperamos el nombre y el objetivo.
       final nombreGuardado =
       await PreferenciasService.obtenerNombre(usuario.id);
 
@@ -100,7 +101,11 @@ class LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      final nombre = nombreGuardado ?? usuario.nombre;
+      final nombre = nombreGuardado == null ||
+          nombreGuardado.isEmpty
+          ? usuario.nombre
+          : nombreGuardado;
+
       final objetivo = objetivoGuardado ?? 3;
 
       // Abrimos la pantalla de hábitos.
@@ -130,12 +135,14 @@ class LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         title: const Text('Iniciar sesión'),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             const SizedBox(height: 40),
 
+            // Campo reutilizable para el usuario.
             CampoTextoApp(
               texto: 'Usuario',
               pista: 'Introduce tu usuario',
@@ -144,6 +151,7 @@ class LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 20),
 
+            // Campo reutilizable para la contraseña.
             CampoTextoApp(
               texto: 'Contraseña',
               pista: 'Introduce tu contraseña',
@@ -153,6 +161,7 @@ class LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 20),
 
+            // Botón reutilizable para acceder.
             BotonPrincipal(
               texto: 'Acceder',
               accion: acceder,
@@ -162,11 +171,14 @@ class LoginPageState extends State<LoginPage> {
 
             Text(
               mensaje,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(
+                color: Colors.red,
+              ),
             ),
 
             const SizedBox(height: 10),
 
+            // Abrimos la pantalla de registro.
             TextButton(
               onPressed: () {
                 Navigator.push(

@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../modelos/habito.dart';
@@ -5,6 +6,8 @@ import '../modelos/usuario.dart';
 import '../servicios/preferencias_service.dart';
 import '../servicios/usuarios_service.dart';
 import '../widgets/boton_principal.dart';
+import '../widgets/tarjeta_habito.dart';
+
 import 'editar_habito_screen.dart';
 
 class AdminHabitosPage extends StatefulWidget {
@@ -25,6 +28,7 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
   List<Usuario> usuarios = [];
   List<Habito> habitos = [];
   Map<String, String> propietarios = {};
+
   bool cargando = true;
   bool esAdmin = false;
 
@@ -34,8 +38,12 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
     comprobarPermisos();
   }
 
+  // Comprueba si el usuario es administrador.
   Future<void> comprobarPermisos() async {
-    final permiso = await UsuariosService.esAdministrador(widget.usuario.id);
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
+
     if (!mounted) return;
 
     setState(() {
@@ -51,14 +59,45 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
     }
   }
 
+  // Comprueba los permisos antes de hacer cambios.
+  Future<bool> tienePermisos() async {
+    final permiso = await UsuariosService.esAdministrador(
+      widget.usuario.id,
+    );
+
+    if (!mounted) return false;
+
+    if (!permiso) {
+      mostrarMensaje('No tienes permisos de administrador');
+      return false;
+    }
+
+    return true;
+  }
+
+  // Muestra mensajes en pantalla.
+  void mostrarMensaje(String mensaje) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+      ),
+    );
+  }
+
   // Consulta los hábitos de todos los usuarios.
   Future<void> cargarDatos() async {
     final listaUsuarios = await UsuariosService.obtenerUsuarios();
+
     final List<Habito> listaHabitos = [];
     final Map<String, String> listaPropietarios = {};
 
     for (final usuario in listaUsuarios) {
-      final lista = await PreferenciasService.obtenerHabitos(usuario.id);
+      final lista = await PreferenciasService.obtenerHabitos(
+        usuario.id,
+      );
+
       for (final habito in lista) {
         listaHabitos.add(habito);
         listaPropietarios[habito.id] = usuario.id;
@@ -75,26 +114,94 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
     });
   }
 
+  // Busca el nombre del propietario del hábito.
   String nombrePropietario(String habitoId) {
     final usuarioId = propietarios[habitoId];
+
     for (final usuario in usuarios) {
       if (usuario.id == usuarioId) {
         return usuario.usuario;
       }
     }
+
     return 'Usuario desconocido';
   }
 
+  // Obtiene la fecha de hoy.
+  String obtenerFechaHoy() {
+    final hoy = DateTime.now();
+
+    final mes = hoy.month.toString().padLeft(2, '0');
+    final dia = hoy.day.toString().padLeft(2, '0');
+
+    return '${hoy.year}-$mes-$dia';
+  }
+
+  // Comprueba si el hábito está completado hoy.
+  bool estaCompletadoHoy(Habito habito) {
+    return habito.fechasCompletado.contains(
+      obtenerFechaHoy(),
+    );
+  }
+
+  // Permite marcar o desmarcar un hábito.
+  Future<void> cambiarCompletado(
+      Habito habito,
+      bool completado,
+      ) async {
+    if (!await tienePermisos()) return;
+
+    final usuarioId = propietarios[habito.id];
+
+    if (usuarioId == null) return;
+
+    final lista = await PreferenciasService.obtenerHabitos(
+      usuarioId,
+    );
+
+    final hoy = obtenerFechaHoy();
+
+    for (final elemento in lista) {
+      if (elemento.id == habito.id) {
+        if (completado) {
+          if (!elemento.fechasCompletado.contains(hoy)) {
+            elemento.fechasCompletado.add(hoy);
+          }
+        } else {
+          elemento.fechasCompletado.remove(hoy);
+        }
+
+        break;
+      }
+    }
+
+    await PreferenciasService.guardarHabitos(
+      usuarioId,
+      lista,
+    );
+
+    if (!mounted) return;
+
+    await cargarDatos();
+  }
+
+  // Permite seleccionar un usuario.
   Future<String?> seleccionarUsuario() async {
     return await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return SimpleDialog(
           title: const Text('Selecciona un usuario'),
+
           children: [
             for (final usuario in usuarios)
               SimpleDialogOption(
-                onPressed: () => Navigator.pop(dialogContext, usuario.id),
+                onPressed: () {
+                  Navigator.pop(
+                    dialogContext,
+                    usuario.id,
+                  );
+                },
                 child: Text(usuario.usuario),
               ),
           ],
@@ -103,8 +210,12 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
     );
   }
 
+  // Crea un hábito para el usuario seleccionado.
   Future<void> crearHabito() async {
+    if (!await tienePermisos()) return;
+
     final usuarioId = await seleccionarUsuario();
+
     if (!mounted || usuarioId == null) return;
 
     final resultado = await Navigator.push<Map<String, dynamic>>(
@@ -120,9 +231,15 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
     if (!mounted || resultado == null) return;
 
     final nombre = (resultado['nombre'] as String).trim();
+
     if (nombre.isEmpty) return;
 
-    final nuevosHabitos = await PreferenciasService.obtenerHabitos(usuarioId);
+    // Comprobamos otra vez los permisos antes de guardar.
+    if (!await tienePermisos()) return;
+
+    final nuevosHabitos =
+    await PreferenciasService.obtenerHabitos(usuarioId);
+
     nuevosHabitos.add(
       Habito(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -131,12 +248,22 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
       ),
     );
 
-    await PreferenciasService.guardarHabitos(usuarioId, nuevosHabitos);
-    if (mounted) await cargarDatos();
+    await PreferenciasService.guardarHabitos(
+      usuarioId,
+      nuevosHabitos,
+    );
+
+    if (!mounted) return;
+
+    await cargarDatos();
   }
 
+  // Modifica el nombre y el color de un hábito.
   Future<void> editarHabito(Habito habito) async {
+    if (!await tienePermisos()) return;
+
     final usuarioId = propietarios[habito.id];
+
     if (usuarioId == null) return;
 
     final resultado = await Navigator.push<Map<String, dynamic>>(
@@ -151,22 +278,38 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
 
     if (!mounted || resultado == null) return;
 
-    final lista = await PreferenciasService.obtenerHabitos(usuarioId);
+    final nombre = (resultado['nombre'] as String).trim();
+
+    if (nombre.isEmpty) return;
+
+    if (!await tienePermisos()) return;
+
+    final lista = await PreferenciasService.obtenerHabitos(
+      usuarioId,
+    );
 
     for (final elemento in lista) {
       if (elemento.id == habito.id) {
-        elemento.nombre = (resultado['nombre'] as String).trim();
+        elemento.nombre = nombre;
         elemento.color = resultado['color'] as int;
         break;
       }
     }
 
-    await PreferenciasService.guardarHabitos(usuarioId, lista);
-    if (mounted) await cargarDatos();
+    await PreferenciasService.guardarHabitos(
+      usuarioId,
+      lista,
+    );
+
+    if (!mounted) return;
+
+    await cargarDatos();
   }
 
+  // Elimina un hábito después de pedir confirmación.
   Future<void> eliminarHabito(Habito habito) async {
     final usuarioId = propietarios[habito.id];
+
     if (usuarioId == null) return;
 
     final confirmar = await showDialog<bool>(
@@ -174,14 +317,23 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Eliminar hábito'),
-          content: Text('¿Quieres eliminar "${habito.nombre}"?'),
+
+          content: Text(
+            '¿Quieres eliminar "${habito.nombre}"?',
+          ),
+
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
               child: const Text('Cancelar'),
             ),
+
             ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
               child: const Text('Eliminar'),
             ),
           ],
@@ -191,13 +343,27 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
 
     if (!mounted || confirmar != true) return;
 
-    final lista = await PreferenciasService.obtenerHabitos(usuarioId);
-    lista.removeWhere((elemento) => elemento.id == habito.id);
+    if (!await tienePermisos()) return;
 
-    await PreferenciasService.guardarHabitos(usuarioId, lista);
-    if (mounted) await cargarDatos();
+    final lista = await PreferenciasService.obtenerHabitos(
+      usuarioId,
+    );
+
+    lista.removeWhere((elemento) {
+      return elemento.id == habito.id;
+    });
+
+    await PreferenciasService.guardarHabitos(
+      usuarioId,
+      lista,
+    );
+
+    if (!mounted) return;
+
+    await cargarDatos();
   }
 
+  // Construye la lista de hábitos.
   Widget construirHabitos() {
     return Column(
       children: [
@@ -208,41 +374,62 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
             accion: crearHabito,
           ),
         ),
+
         Expanded(
           child: habitos.isEmpty
-              ? const Center(child: Text('No hay hábitos'))
+              ? const Center(
+            child: Text('No hay hábitos'),
+          )
               : ListView.builder(
-                  itemCount: habitos.length,
-                  itemBuilder: (context, index) {
-                    final habito = habitos[index];
-                    return Card(
-                      margin: const EdgeInsets.all(8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Color(habito.color),
-                          child: const Icon(Icons.water_drop, color: Colors.white),
-                        ),
-                        title: Text(habito.nombre),
-                        subtitle: Text('Usuario: ${nombrePropietario(habito.id)}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Editar hábito',
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => editarHabito(habito),
-                            ),
-                            IconButton(
-                              tooltip: 'Eliminar hábito',
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => eliminarHabito(habito),
-                            ),
-                          ],
+            itemCount: habitos.length,
+
+            itemBuilder: (context, index) {
+              final habito = habitos[index];
+
+              return Column(
+                children: [
+                  // Mostramos el usuario propietario.
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 8,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Usuario: ${nombrePropietario(habito.id)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+
+                  // Reutilizamos la tarjeta de hábitos.
+                  TarjetaHabito(
+                    habito: habito,
+                    completado: estaCompletadoHoy(habito),
+
+                    alCambiarCompletado: (completado) {
+                      cambiarCompletado(
+                        habito,
+                        completado,
+                      );
+                    },
+
+                    alEditar: () {
+                      editarHabito(habito);
+                    },
+
+                    alEliminar: () {
+                      eliminarHabito(habito);
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
@@ -252,19 +439,27 @@ class _AdminHabitosPageState extends State<AdminHabitosPage> {
   Widget build(BuildContext context) {
     if (cargando) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     if (!esAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Acceso denegado')),
-        body: const Center(child: Text('No tienes permisos para acceder')),
+        appBar: AppBar(
+          title: const Text('Acceso denegado'),
+        ),
+        body: const Center(
+          child: Text('No tienes permisos para acceder'),
+        ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestionar hábitos')),
+      appBar: AppBar(
+        title: const Text('Gestionar hábitos'),
+      ),
       body: construirHabitos(),
     );
   }

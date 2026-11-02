@@ -108,7 +108,6 @@ class PreferenciasService {
   // Calcula la racha actual de un hábito.
   static int calcularRacha(Habito habito) {
     final fechas = habito.fechasCompletado.toSet();
-
     final hoy = DateTime.now();
 
     DateTime fecha = DateTime(
@@ -149,7 +148,7 @@ class PreferenciasService {
     final db = await DatabaseHelper.obtenerBaseDatos();
 
     await db.transaction((transaccion) async {
-      // Recuperamos los hábitos que ya están guardados.
+      // Recuperamos los hábitos guardados.
       final anteriores = await transaccion.query(
         'habitos',
         columns: ['id'],
@@ -157,7 +156,7 @@ class PreferenciasService {
         whereArgs: [usuarioId],
       );
 
-      // Eliminamos los hábitos que ya no están en la lista.
+      // Eliminamos los hábitos que ya no existen.
       for (final anterior in anteriores) {
         bool existe = false;
 
@@ -179,6 +178,33 @@ class PreferenciasService {
 
       // Guardamos cada hábito.
       for (final habito in habitos) {
+        // Buscamos las fechas guardadas anteriormente.
+        final anterior = await transaccion.query(
+          'habitos',
+          columns: ['fechasCompletado'],
+          where: 'id = ? AND usuarioId = ?',
+          whereArgs: [habito.id, usuarioId],
+        );
+
+        bool fechasCambiadas = anterior.isEmpty;
+
+        if (anterior.isNotEmpty) {
+          final texto = anterior.first['fechasCompletado']
+          as String;
+
+          final fechasAnteriores =
+          List<String>.from(jsonDecode(texto));
+
+          final fechasAntes = fechasAnteriores.toSet();
+          final fechasAhora =
+          habito.fechasCompletado.toSet();
+
+          // Comprobamos si las fechas son diferentes.
+          fechasCambiadas =
+              fechasAntes.length != fechasAhora.length ||
+                  !fechasAntes.containsAll(fechasAhora);
+        }
+
         final datos = {
           'id': habito.id,
           'usuarioId': usuarioId,
@@ -188,45 +214,53 @@ class PreferenciasService {
           jsonEncode(habito.fechasCompletado),
         };
 
-        // Primero intentamos actualizarlo.
-        final actualizados = await transaccion.update(
-          'habitos',
-          datos,
-          where: 'id = ? AND usuarioId = ?',
-          whereArgs: [habito.id, usuarioId],
-        );
-
-        // Si no existía, lo insertamos.
-        if (actualizados == 0) {
+        // Insertamos o actualizamos el hábito.
+        if (anterior.isEmpty) {
           await transaccion.insert(
             'habitos',
             datos,
           );
+        } else {
+          await transaccion.update(
+            'habitos',
+            datos,
+            where: 'id = ? AND usuarioId = ?',
+            whereArgs: [habito.id, usuarioId],
+          );
         }
 
-        // Preparamos las estadísticas del hábito.
-        final estadisticas = {
-          'habitoId': habito.id,
-          'rachaActual': calcularRacha(habito),
-          'diasCompletados':
-          habito.fechasCompletado.toSet().length,
-        };
-
-        // Actualizamos las estadísticas existentes.
-        final estadisticasActualizadas =
-        await transaccion.update(
+        // Comprobamos si el hábito tiene estadísticas.
+        final estadisticaAnterior =
+        await transaccion.query(
           'estadisticas',
-          estadisticas,
+          columns: ['id'],
           where: 'habitoId = ?',
           whereArgs: [habito.id],
         );
 
-        // Si no existen, las insertamos.
-        if (estadisticasActualizadas == 0) {
-          await transaccion.insert(
-            'estadisticas',
-            estadisticas,
-          );
+        // Solo recalculamos cuando cambian las fechas
+        // o todavía no existen estadísticas.
+        if (fechasCambiadas || estadisticaAnterior.isEmpty) {
+          final estadisticas = {
+            'habitoId': habito.id,
+            'rachaActual': calcularRacha(habito),
+            'diasCompletados':
+            habito.fechasCompletado.toSet().length,
+          };
+
+          if (estadisticaAnterior.isEmpty) {
+            await transaccion.insert(
+              'estadisticas',
+              estadisticas,
+            );
+          } else {
+            await transaccion.update(
+              'estadisticas',
+              estadisticas,
+              where: 'habitoId = ?',
+              whereArgs: [habito.id],
+            );
+          }
         }
       }
     });
@@ -250,7 +284,7 @@ class PreferenciasService {
     for (final elemento in datos) {
       final mapa = Map<String, dynamic>.from(elemento);
 
-      // Las fechas están guardadas como texto JSON.
+      // Convertimos las fechas guardadas en JSON.
       mapa['fechasCompletado'] =
           jsonDecode(mapa['fechasCompletado'] as String);
 
@@ -260,7 +294,7 @@ class PreferenciasService {
     return habitos;
   }
 
-  // Recupera los nombres de los hábitos desde SQLite.
+  // Recupera los nombres de los hábitos.
   static Future<List<String>> obtenerNombresHabitos(
       String usuarioId,
       ) async {
@@ -289,9 +323,8 @@ class PreferenciasService {
       ) async {
     final db = await DatabaseHelper.obtenerBaseDatos();
 
-    // Eliminamos sus hábitos de SQLite.
-    // Sus estadísticas se eliminan automáticamente
-    // por la relación ON DELETE CASCADE.
+    // Las estadísticas también se eliminan
+    // mediante ON DELETE CASCADE.
     await db.delete(
       'habitos',
       where: 'usuarioId = ?',
@@ -301,7 +334,6 @@ class PreferenciasService {
     final preferencias =
     await SharedPreferences.getInstance();
 
-    // Eliminamos sus ajustes personales.
     await preferencias.remove(
       '${claveNombre}_$usuarioId',
     );
@@ -395,7 +427,7 @@ class PreferenciasService {
     );
   }
 
-  // Borra las preferencias generales del dispositivo.
+  // Borra las preferencias generales.
   static Future<void> borrarDatos() async {
     final preferencias =
     await SharedPreferences.getInstance();

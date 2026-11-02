@@ -21,6 +21,7 @@ class DatabaseHelper {
       ruta,
       version: 1,
 
+      // Activamos las relaciones entre tablas.
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
