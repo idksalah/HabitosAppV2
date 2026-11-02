@@ -1,28 +1,20 @@
 
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../models/usuario.dart';
+import 'database_helper.dart';
 
 class UsuariosService {
-  static const String claveUsuarios = 'usuarios';
 
-  // Recupera todos los usuarios guardados.
+  // Recupera todos los usuarios de la base de datos.
   static Future<List<Usuario>> obtenerUsuarios() async {
-    final preferencias = await SharedPreferences.getInstance();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    final datos = preferencias.getString(claveUsuarios);
-
-    if (datos == null) {
-      return [];
-    }
-
-    final lista = jsonDecode(datos) as List;
+    final datos = await db.query('usuarios');
 
     final List<Usuario> usuarios = [];
 
-    for (final elemento in lista) {
+    for (final elemento in datos) {
       usuarios.add(
         Usuario.fromJson(
           Map<String, dynamic>.from(elemento),
@@ -33,35 +25,47 @@ class UsuariosService {
     return usuarios;
   }
 
-  // Guarda la lista de usuarios.
+  // Guarda los cambios de los usuarios.
   static Future<void> guardarUsuarios(
       List<Usuario> usuarios,
       ) async {
-    final preferencias = await SharedPreferences.getInstance();
-
-    final listaJson = [];
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
     for (final usuario in usuarios) {
-      listaJson.add(usuario.toJson());
-    }
+      final filas = await db.update(
+        'usuarios',
+        usuario.toJson(),
+        where: 'id = ?',
+        whereArgs: [usuario.id],
+      );
 
-    await preferencias.setString(
-      claveUsuarios,
-      jsonEncode(listaJson),
-    );
+      // Si el usuario no existe, lo añadimos.
+      if (filas == 0) {
+        await db.insert(
+          'usuarios',
+          usuario.toJson(),
+        );
+      }
+    }
   }
 
   // Busca un usuario por su identificador.
   static Future<Usuario?> obtenerUsuarioPorId(String id) async {
-    final usuarios = await obtenerUsuarios();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    for (final usuario in usuarios) {
-      if (usuario.id == id) {
-        return usuario;
-      }
+    final datos = await db.query(
+      'usuarios',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (datos.isEmpty) {
+      return null;
     }
 
-    return null;
+    return Usuario.fromJson(
+      Map<String, dynamic>.from(datos.first),
+    );
   }
 
   // Comprueba si un usuario es administrador.
@@ -73,6 +77,8 @@ class UsuariosService {
 
   // Registra un usuario nuevo.
   static Future<bool> registrarUsuario(Usuario usuario) async {
+    final db = await DatabaseHelper.obtenerBaseDatos();
+
     final usuarios = await obtenerUsuarios();
 
     // Comprobamos que no exista el usuario o el correo.
@@ -85,14 +91,17 @@ class UsuariosService {
       }
     }
 
-    usuarios.add(usuario);
+    // Insertamos el usuario en la tabla.
+    final resultado = await db.insert(
+      'usuarios',
+      usuario.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
 
-    await guardarUsuarios(usuarios);
-
-    return true;
+    return resultado != -1;
   }
 
-  // Comprueba los datos de inicio de sesión.
+  // Comprueba los datos para iniciar sesión.
   static Future<Usuario?> iniciarSesion(
       String nombreUsuario,
       String contrasena,
@@ -110,35 +119,27 @@ class UsuariosService {
     return null;
   }
 
-  // Elimina un usuario por su identificador.
+  // Elimina un usuario de la base de datos.
   static Future<bool> eliminarUsuario(String id) async {
-    final usuarios = await obtenerUsuarios();
+    final db = await DatabaseHelper.obtenerBaseDatos();
 
-    Usuario? usuarioEncontrado;
+    final usuario = await obtenerUsuarioPorId(id);
 
-    for (final usuario in usuarios) {
-      if (usuario.id == id) {
-        usuarioEncontrado = usuario;
-        break;
-      }
-    }
-
-    // No eliminamos usuarios inexistentes ni administradores.
-    if (usuarioEncontrado == null ||
-        usuarioEncontrado.rol == 'admin') {
+    // No permitimos eliminar administradores.
+    if (usuario == null || usuario.rol == 'admin') {
       return false;
     }
 
-    usuarios.removeWhere((usuario) {
-      return usuario.id == id;
-    });
+    final resultado = await db.delete(
+      'usuarios',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
 
-    await guardarUsuarios(usuarios);
-
-    return true;
+    return resultado > 0;
   }
 
-  // Crea el administrador inicial si todavía no existe.
+  // Crea el administrador si todavía no existe.
   static Future<void> crearAdministradorInicial() async {
     final usuarios = await obtenerUsuarios();
 
@@ -148,7 +149,7 @@ class UsuariosService {
       }
     }
 
-    // Cuenta de demostración para las pruebas locales.
+    // Cuenta de prueba para el desarrollo local.
     final administrador = Usuario(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       usuario: 'admin',
