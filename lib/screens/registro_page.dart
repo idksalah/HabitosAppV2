@@ -17,7 +17,13 @@ class RegistroPage extends StatefulWidget {
 }
 
 class RegistroPageState extends State<RegistroPage> {
+  final TextEditingController usuarioController =
+  TextEditingController();
+
   final TextEditingController nombreController =
+  TextEditingController();
+
+  final TextEditingController apellidosController =
   TextEditingController();
 
   final TextEditingController correoController =
@@ -28,45 +34,75 @@ class RegistroPageState extends State<RegistroPage> {
 
   String mensaje = '';
 
+  // Comprueba los datos y registra un usuario.
   Future<void> registrar() async {
-    if (nombreController.text.isEmpty ||
-        correoController.text.isEmpty ||
-        contrasenaController.text.isEmpty) {
+    final usuarioTexto = usuarioController.text.trim();
+    final nombre = nombreController.text.trim();
+    final apellidos = apellidosController.text.trim();
+    final correo = correoController.text.trim();
+    final contrasena = contrasenaController.text;
+
+    if (usuarioTexto.isEmpty ||
+        nombre.isEmpty ||
+        apellidos.isEmpty ||
+        correo.isEmpty ||
+        contrasena.isEmpty) {
       setState(() {
         mensaje = 'Completa todos los campos';
       });
       return;
     }
 
-    final usuario = Usuario(
+    // Comprobamos que el usuario no exista.
+    final usuarios = await UsuariosService.obtenerUsuarios();
+
+    if (!mounted) return;
+
+    for (final elemento in usuarios) {
+      if (elemento.usuario.toLowerCase() ==
+          usuarioTexto.toLowerCase()) {
+        setState(() {
+          mensaje = 'Este nombre de usuario ya existe';
+        });
+        return;
+      }
+    }
+
+    // Creamos el usuario con sus datos.
+    final nuevoUsuario = Usuario(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      nombre: nombreController.text.trim(),
-      correo: correoController.text.trim(),
-      contrasena: contrasenaController.text,
+      usuario: usuarioTexto,
+      nombre: nombre,
+      apellidos: apellidos,
+      correo: correo,
+      contrasena: contrasena,
       rol: 'usuario',
       fechaCreacion: DateTime.now(),
     );
 
+    // Guardamos el usuario.
     final registrado =
-    await UsuariosService.registrarUsuario(usuario);
+    await UsuariosService.registrarUsuario(nuevoUsuario);
 
     if (!mounted) return;
 
     if (registrado) {
-      final preferencias = await SharedPreferences.getInstance();
+      final preferencias =
+      await SharedPreferences.getInstance();
 
+      // Ajustes iniciales del usuario.
       await preferencias.setBool(
-        'temaOscuro_${usuario.id}',
+        'temaOscuro_${nuevoUsuario.id}',
         false,
       );
 
       await preferencias.setDouble(
-        'tamanoLetra_${usuario.id}',
+        'tamanoLetra_${nuevoUsuario.id}',
         1.0,
       );
 
       await preferencias.setBool(
-        'ocultarCompletados_${usuario.id}',
+        'ocultarCompletados_${nuevoUsuario.id}',
         false,
       );
 
@@ -88,7 +124,9 @@ class RegistroPageState extends State<RegistroPage> {
 
   @override
   void dispose() {
+    usuarioController.dispose();
     nombreController.dispose();
+    apellidosController.dispose();
     correoController.dispose();
     contrasenaController.dispose();
     super.dispose();
@@ -103,12 +141,27 @@ class RegistroPageState extends State<RegistroPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            CampoTextoApp(
+              texto: 'Usuario',
+              pista: 'Introduce tu nombre de usuario',
+              controlador: usuarioController,
+            ),
+
+            const SizedBox(height: 20),
+
             CampoTextoApp(
               texto: 'Nombre',
               pista: 'Introduce tu nombre',
               controlador: nombreController,
+            ),
+
+            const SizedBox(height: 20),
+
+            CampoTextoApp(
+              texto: 'Apellidos',
+              pista: 'Introduce tus apellidos',
+              controlador: apellidosController,
             ),
 
             const SizedBox(height: 20),
@@ -137,13 +190,20 @@ class RegistroPageState extends State<RegistroPage> {
 
             const SizedBox(height: 10),
 
-            Text(mensaje),
+            Text(
+              mensaje,
+              style: const TextStyle(color: Colors.red),
+            ),
+
+            const SizedBox(height: 10),
 
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text('Volver al inicio de sesión'),
+              child: const Text(
+                'Volver al inicio de sesión',
+              ),
             ),
           ],
         ),

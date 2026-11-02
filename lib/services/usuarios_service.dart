@@ -8,6 +8,7 @@ import '../models/usuario.dart';
 class UsuariosService {
   static const String claveUsuarios = 'usuarios';
 
+  // Recupera todos los usuarios guardados.
   static Future<List<Usuario>> obtenerUsuarios() async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -19,13 +20,38 @@ class UsuariosService {
 
     final lista = jsonDecode(datos) as List;
 
-    return lista.map((elemento) {
-      return Usuario.fromJson(
-        Map<String, dynamic>.from(elemento),
+    final List<Usuario> usuarios = [];
+
+    for (final elemento in lista) {
+      usuarios.add(
+        Usuario.fromJson(
+          Map<String, dynamic>.from(elemento),
+        ),
       );
-    }).toList();
+    }
+
+    return usuarios;
   }
 
+  // Guarda la lista de usuarios.
+  static Future<void> guardarUsuarios(
+      List<Usuario> usuarios,
+      ) async {
+    final preferencias = await SharedPreferences.getInstance();
+
+    final listaJson = [];
+
+    for (final usuario in usuarios) {
+      listaJson.add(usuario.toJson());
+    }
+
+    await preferencias.setString(
+      claveUsuarios,
+      jsonEncode(listaJson),
+    );
+  }
+
+  // Busca un usuario por su identificador.
   static Future<Usuario?> obtenerUsuarioPorId(String id) async {
     final usuarios = await obtenerUsuarios();
 
@@ -38,46 +64,44 @@ class UsuariosService {
     return null;
   }
 
+  // Comprueba si un usuario es administrador.
   static Future<bool> esAdministrador(String id) async {
     final usuario = await obtenerUsuarioPorId(id);
 
     return usuario != null && usuario.rol == 'admin';
   }
 
+  // Registra un usuario nuevo.
   static Future<bool> registrarUsuario(Usuario usuario) async {
     final usuarios = await obtenerUsuarios();
 
+    // Comprobamos que no exista el usuario o el correo.
     for (final elemento in usuarios) {
-      if (elemento.correo.toLowerCase() ==
-          usuario.correo.toLowerCase()) {
+      if (elemento.usuario.toLowerCase() ==
+          usuario.usuario.toLowerCase() ||
+          elemento.correo.toLowerCase() ==
+              usuario.correo.toLowerCase()) {
         return false;
       }
     }
 
     usuarios.add(usuario);
 
-    final preferencias = await SharedPreferences.getInstance();
-
-    final listaJson = usuarios.map((usuario) {
-      return usuario.toJson();
-    }).toList();
-
-    await preferencias.setString(
-      claveUsuarios,
-      jsonEncode(listaJson),
-    );
+    await guardarUsuarios(usuarios);
 
     return true;
   }
 
+  // Comprueba los datos de inicio de sesión.
   static Future<Usuario?> iniciarSesion(
-      String correo,
+      String nombreUsuario,
       String contrasena,
       ) async {
     final usuarios = await obtenerUsuarios();
 
     for (final usuario in usuarios) {
-      if (usuario.correo.toLowerCase() == correo.toLowerCase() &&
+      if (usuario.usuario.toLowerCase() ==
+          nombreUsuario.toLowerCase() &&
           usuario.contrasena == contrasena) {
         return usuario;
       }
@@ -86,41 +110,35 @@ class UsuariosService {
     return null;
   }
 
+  // Elimina un usuario por su identificador.
   static Future<bool> eliminarUsuario(String id) async {
     final usuarios = await obtenerUsuarios();
 
-    final usuario = usuarios.firstWhere(
-          (elemento) => elemento.id == id,
-      orElse: () => Usuario(
-        id: '',
-        nombre: '',
-        correo: '',
-        contrasena: '',
-        rol: '',
-        fechaCreacion: DateTime.now(),
-      ),
-    );
+    Usuario? usuarioEncontrado;
 
-    if (usuario.id.isEmpty || usuario.rol == 'admin') {
+    for (final usuario in usuarios) {
+      if (usuario.id == id) {
+        usuarioEncontrado = usuario;
+        break;
+      }
+    }
+
+    // No eliminamos usuarios inexistentes ni administradores.
+    if (usuarioEncontrado == null ||
+        usuarioEncontrado.rol == 'admin') {
       return false;
     }
 
-    usuarios.removeWhere((usuario) => usuario.id == id);
+    usuarios.removeWhere((usuario) {
+      return usuario.id == id;
+    });
 
-    final preferencias = await SharedPreferences.getInstance();
-
-    final listaJson = usuarios.map((usuario) {
-      return usuario.toJson();
-    }).toList();
-
-    await preferencias.setString(
-      claveUsuarios,
-      jsonEncode(listaJson),
-    );
+    await guardarUsuarios(usuarios);
 
     return true;
   }
 
+  // Crea el administrador inicial si todavía no existe.
   static Future<void> crearAdministradorInicial() async {
     final usuarios = await obtenerUsuarios();
 
@@ -130,9 +148,12 @@ class UsuariosService {
       }
     }
 
+    // Cuenta de demostración para las pruebas locales.
     final administrador = Usuario(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      nombre: 'admin',
+      usuario: 'admin',
+      nombre: 'Administrador',
+      apellidos: 'Sistema',
       correo: 'admin@admin.com',
       contrasena: 'admin1234',
       rol: 'admin',

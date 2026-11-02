@@ -8,8 +8,13 @@ import 'services/usuarios_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Cargamos los ajustes guardados.
+  await PreferenciasService.cargarAjustes();
+
+  // Creamos el administrador inicial.
   await UsuariosService.crearAdministradorInicial();
 
+  // Registramos una apertura de la aplicación.
   await PreferenciasService.registrarApertura();
 
   runApp(const MyApp());
@@ -29,12 +34,16 @@ class MyApp extends StatelessWidget {
             return MaterialApp(
               title: 'HabitosApp',
               debugShowCheckedModeBanner: false,
+
+              // Tema claro.
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(
                   seedColor: Colors.green,
                 ),
                 useMaterial3: true,
               ),
+
+              // Tema oscuro.
               darkTheme: ThemeData(
                 brightness: Brightness.dark,
                 colorScheme: ColorScheme.fromSeed(
@@ -43,7 +52,10 @@ class MyApp extends StatelessWidget {
                 ),
                 useMaterial3: true,
               ),
+
               themeMode: tema,
+
+              // Tamaño de letra.
               builder: (context, child) {
                 final mediaQuery = MediaQuery.of(context);
 
@@ -54,6 +66,8 @@ class MyApp extends StatelessWidget {
                   child: child ?? const SizedBox.shrink(),
                 );
               },
+
+              // Pantalla inicial.
               home: const LoginPage(),
             );
           },

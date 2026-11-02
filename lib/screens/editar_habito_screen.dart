@@ -1,4 +1,8 @@
+
 import 'package:flutter/material.dart';
+
+import '../widgets/campo_texto_app.dart';
+import '../widgets/boton_principal.dart';
 
 class EditarHabitoScreen extends StatefulWidget {
   final String nombre;
@@ -11,7 +15,9 @@ class EditarHabitoScreen extends StatefulWidget {
   });
 
   @override
-  State<EditarHabitoScreen> createState() => _EditarHabitoScreenState();
+  State<EditarHabitoScreen> createState() {
+    return _EditarHabitoScreenState();
+  }
 }
 
 class _EditarHabitoScreenState extends State<EditarHabitoScreen> {
@@ -22,7 +28,10 @@ class _EditarHabitoScreenState extends State<EditarHabitoScreen> {
   void initState() {
     super.initState();
 
-    nombreController = TextEditingController(text: widget.nombre);
+    nombreController = TextEditingController(
+      text: widget.nombre,
+    );
+
     colorSeleccionado = widget.color;
   }
 
@@ -32,8 +41,10 @@ class _EditarHabitoScreenState extends State<EditarHabitoScreen> {
     super.dispose();
   }
 
+  // Crea un botón para seleccionar un color.
   Widget botonColor(String nombre, Color color) {
-    final bool seleccionado = colorSeleccionado == color.toARGB32();
+    final bool seleccionado =
+        colorSeleccionado == color.toARGB32();
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -48,62 +59,98 @@ class _EditarHabitoScreenState extends State<EditarHabitoScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (seleccionado) const Icon(Icons.check),
+          if (seleccionado)
+            const Icon(Icons.check),
+
           const SizedBox(width: 4),
+
           Text(nombre),
         ],
       ),
     );
   }
 
+  // Comprueba el nombre y devuelve los datos.
   void guardar() {
     final String nombre = nombreController.text.trim();
 
     if (nombre.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Introduce el nombre del hábito')),
+        const SnackBar(
+          content: Text('Introduce el nombre del hábito'),
+        ),
       );
       return;
     }
 
-    Navigator.pop(context, {'nombre': nombre, 'color': colorSeleccionado});
+    Navigator.pop(context, {
+      'nombre': nombre,
+      'color': colorSeleccionado,
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Comprueba si estamos creando o editando.
+    final bool esNuevo = widget.nombre.isEmpty;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Editar hábito')),
+      appBar: AppBar(
+        title: Text(
+          esNuevo ? 'Nuevo hábito' : 'Editar hábito',
+        ),
+      ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: nombreController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre del hábito',
-                border: OutlineInputBorder(),
-              ),
+            // Campo reutilizable para escribir el nombre.
+            CampoTextoApp(
+              texto: 'Nombre del hábito',
+              pista: 'Introduce el nombre',
+              controlador: nombreController,
             ),
+
             const SizedBox(height: 24),
+
             const Text(
               'Selecciona un color:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+            // Botones para elegir el color.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 botonColor('Azul', Colors.blue),
                 botonColor('Verde', Colors.green),
                 botonColor('Naranja', Colors.orange),
               ],
             ),
+
             const SizedBox(height: 32),
-            ElevatedButton(onPressed: guardar, child: const Text('Guardar')),
+
+            // Botón reutilizable para guardar.
+            BotonPrincipal(
+              texto: 'Guardar',
+              accion: guardar,
+            ),
+
             const SizedBox(height: 12),
+
             OutlinedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+              },
               child: const Text('Cancelar'),
             ),
           ],

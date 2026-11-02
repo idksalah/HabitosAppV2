@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/habito.dart';
 import '../models/usuario.dart';
 import '../services/preferencias_service.dart';
+import '../widgets/dato_estadistica.dart';
 
 class EstadisticasScreen extends StatefulWidget {
   final Usuario usuario;
@@ -14,7 +15,9 @@ class EstadisticasScreen extends StatefulWidget {
   });
 
   @override
-  State<EstadisticasScreen> createState() => _EstadisticasScreenState();
+  State<EstadisticasScreen> createState() {
+    return _EstadisticasScreenState();
+  }
 }
 
 class _EstadisticasScreenState extends State<EstadisticasScreen> {
@@ -30,11 +33,15 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     cargarEstadisticas();
   }
 
+  // Recupera las estadísticas del usuario.
   Future<void> cargarEstadisticas() async {
     final lista = await PreferenciasService.obtenerHabitos(
       widget.usuario.id,
     );
-    final totalAperturas = await PreferenciasService.obtenerAperturas();
+
+    final totalAperturas =
+    await PreferenciasService.obtenerAperturas();
+
     final fechaAnterior =
     await PreferenciasService.obtenerAperturaAnterior();
 
@@ -48,35 +55,54 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     });
   }
 
+  // Convierte una fecha al formato año-mes-día.
+  String formatoFecha(DateTime fecha) {
+    final mes = fecha.month.toString().padLeft(2, '0');
+    final dia = fecha.day.toString().padLeft(2, '0');
+
+    return '${fecha.year}-$mes-$dia';
+  }
+
+  // Calcula la racha actual de un hábito.
   int calcularRacha(Habito habito) {
     if (habito.fechasCompletado.isEmpty) {
       return 0;
     }
 
     final fechas = habito.fechasCompletado.toSet();
-    DateTime fecha = DateTime.now();
+    final hoy = DateTime.now();
 
-    String formatoFecha(DateTime fecha) {
-      final mes = fecha.month.toString().padLeft(2, '0');
-      final dia = fecha.day.toString().padLeft(2, '0');
+    DateTime fecha = DateTime(
+      hoy.year,
+      hoy.month,
+      hoy.day,
+    );
 
-      return '${fecha.year}-$mes-$dia';
-    }
-
+    // Si hoy no está completado, empezamos desde ayer.
     if (!fechas.contains(formatoFecha(fecha))) {
-      fecha = fecha.subtract(const Duration(days: 1));
+      fecha = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day - 1,
+      );
     }
 
     int racha = 0;
 
     while (fechas.contains(formatoFecha(fecha))) {
       racha++;
-      fecha = fecha.subtract(const Duration(days: 1));
+
+      fecha = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day - 1,
+      );
     }
 
     return racha;
   }
 
+  // Muestra una fecha de forma más clara.
   String mostrarFecha(String? fechaGuardada) {
     if (fechaGuardada == null || fechaGuardada.isEmpty) {
       return 'Todavía no hay una apertura anterior registrada';
@@ -100,9 +126,14 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Estadísticas')),
+      appBar: AppBar(
+        title: const Text('Estadísticas'),
+      ),
+
       body: cargando
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
           : ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -113,12 +144,15 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(height: 12),
 
           Card(
             child: ListTile(
               leading: const Icon(Icons.phone_android),
-              title: const Text('Aperturas de la aplicación'),
+              title: const Text(
+                'Aperturas de la aplicación',
+              ),
               subtitle: Text('$aperturas veces'),
             ),
           ),
@@ -127,7 +161,9 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
             child: ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Apertura anterior'),
-              subtitle: Text(mostrarFecha(aperturaAnterior)),
+              subtitle: Text(
+                mostrarFecha(aperturaAnterior),
+              ),
             ),
           ),
 
@@ -140,36 +176,73 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+
           const SizedBox(height: 16),
 
           if (habitos.isEmpty)
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Todavía no tienes hábitos.'),
+                child: Text(
+                  'Todavía no tienes hábitos.',
+                ),
               ),
             )
           else
-            ...habitos.map((habito) {
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Color(habito.color),
-                    child: const Icon(
-                      Icons.water_drop,
-                      color: Colors.white,
-                    ),
+            for (final habito in habitos)
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      // Nombre del hábito.
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Color(habito.color),
+                            child: const Icon(
+                              Icons.water_drop,
+                              color: Colors.white,
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: Text(
+                              habito.nombre,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Componente reutilizable.
+                      DatoEstadistica(
+                        titulo: 'Días completados',
+                        valor:
+                        '${habito.fechasCompletado.toSet().length}',
+                        icono: Icons.check_circle,
+                        color: Colors.green,
+                      ),
+
+                      // Utilizamos el mismo componente.
+                      DatoEstadistica(
+                        titulo: 'Racha actual',
+                        valor: '${calcularRacha(habito)} días',
+                        icono: Icons.local_fire_department,
+                        color: Colors.orange,
+                      ),
+                    ],
                   ),
-                  title: Text(habito.nombre),
-                  subtitle: Text(
-                    'Días completados: '
-                        '${habito.fechasCompletado.toSet().length}\n'
-                        'Racha actual: ${calcularRacha(habito)} días',
-                  ),
-                  isThreeLine: true,
                 ),
-              );
-            }),
+              ),
         ],
       ),
     );

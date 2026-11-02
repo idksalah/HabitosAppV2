@@ -5,12 +5,14 @@ class DatoEstadistica extends StatelessWidget {
   final String titulo;
   final String valor;
   final IconData icono;
+  final Color color;
 
   const DatoEstadistica({
     super.key,
     required this.titulo,
     required this.valor,
     required this.icono,
+    this.color = Colors.blue,
   });
 
   @override
@@ -20,8 +22,14 @@ class DatoEstadistica extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Icon(icono, size: 30),
+            Icon(
+              icono,
+              size: 30,
+              color: color,
+            ),
+
             const SizedBox(height: 8),
+
             Text(
               valor,
               style: const TextStyle(
@@ -29,6 +37,7 @@ class DatoEstadistica extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             Text(titulo),
           ],
         ),

@@ -20,7 +20,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class LoginPageState extends State<LoginPage> {
-  final TextEditingController correoController =
+  final TextEditingController usuarioController =
   TextEditingController();
 
   final TextEditingController contrasenaController =
@@ -28,6 +28,7 @@ class LoginPageState extends State<LoginPage> {
 
   String mensaje = '';
 
+  // Carga los ajustes del usuario.
   Future<void> cargarAjustesUsuario(String usuarioId) async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -48,9 +49,12 @@ class LoginPageState extends State<LoginPage> {
     PreferenciasService.ocultarCompletados.value = ocultar;
   }
 
+  // Comprueba el usuario y la contraseña.
   Future<void> acceder() async {
-    if (correoController.text.isEmpty ||
-        contrasenaController.text.isEmpty) {
+    final nombreUsuario = usuarioController.text.trim();
+    final contrasena = contrasenaController.text;
+
+    if (nombreUsuario.isEmpty || contrasena.isEmpty) {
       setState(() {
         mensaje = 'Completa todos los campos';
       });
@@ -58,23 +62,25 @@ class LoginPageState extends State<LoginPage> {
     }
 
     final usuario = await UsuariosService.iniciarSesion(
-      correoController.text,
-      contrasenaController.text,
+      nombreUsuario,
+      contrasena,
     );
 
     if (!mounted) return;
 
     if (usuario == null) {
       setState(() {
-        mensaje = 'Correo o contraseña incorrectos';
+        mensaje = 'Usuario o contraseña incorrectos';
       });
       return;
     }
 
+    // Cargamos los ajustes del usuario.
     await cargarAjustesUsuario(usuario.id);
 
     if (!mounted) return;
 
+    // Si es administrador, abrimos administración.
     if (usuario.rol == 'admin') {
       Navigator.pushReplacement(
         context,
@@ -85,24 +91,26 @@ class LoginPageState extends State<LoginPage> {
         ),
       );
     } else {
-      String? nombre =
+      // Recuperamos los datos del usuario.
+      final nombreGuardado =
       await PreferenciasService.obtenerNombre(usuario.id);
 
-      int? objetivo =
+      final objetivoGuardado =
       await PreferenciasService.obtenerObjetivo(usuario.id);
-
-      nombre ??= usuario.nombre;
-      objetivo ??= 3;
 
       if (!mounted) return;
 
+      final nombre = nombreGuardado ?? usuario.nombre;
+      final objetivo = objetivoGuardado ?? 3;
+
+      // Abrimos la pantalla de hábitos.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => InicioScreen(
             usuario: usuario,
-            nombre: nombre!,
-            objetivo: objetivo!,
+            nombre: nombre,
+            objetivo: objetivo,
           ),
         ),
       );
@@ -111,7 +119,7 @@ class LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    correoController.dispose();
+    usuarioController.dispose();
     contrasenaController.dispose();
     super.dispose();
   }
@@ -122,15 +130,16 @@ class LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         title: const Text('Iniciar sesión'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 40),
+
             CampoTextoApp(
-              texto: 'Correo electrónico',
-              pista: 'Introduce tu correo',
-              controlador: correoController,
+              texto: 'Usuario',
+              pista: 'Introduce tu usuario',
+              controlador: usuarioController,
             ),
 
             const SizedBox(height: 20),
@@ -151,7 +160,12 @@ class LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 10),
 
-            Text(mensaje),
+            Text(
+              mensaje,
+              style: const TextStyle(color: Colors.red),
+            ),
+
+            const SizedBox(height: 10),
 
             TextButton(
               onPressed: () {

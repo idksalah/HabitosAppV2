@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/usuario.dart';
 import '../services/preferencias_service.dart';
+import 'login_page.dart';
 
 class AjustesScreen extends StatefulWidget {
   final Usuario usuario;
@@ -14,7 +15,9 @@ class AjustesScreen extends StatefulWidget {
   });
 
   @override
-  State<AjustesScreen> createState() => _AjustesScreenState();
+  State<AjustesScreen> createState() {
+    return _AjustesScreenState();
+  }
 }
 
 class _AjustesScreenState extends State<AjustesScreen> {
@@ -26,17 +29,23 @@ class _AjustesScreenState extends State<AjustesScreen> {
     cargarAjustes();
   }
 
+  // Recupera los ajustes del usuario.
   Future<void> cargarAjustes() async {
     final preferencias = await SharedPreferences.getInstance();
     final id = widget.usuario.id;
 
-    final oscuro = preferencias.getBool('temaOscuro_$id') ?? false;
-    final tamano = preferencias.getDouble('tamanoLetra_$id') ?? 1.0;
+    final oscuro =
+        preferencias.getBool('temaOscuro_$id') ?? false;
+
+    final tamano =
+        preferencias.getDouble('tamanoLetra_$id') ?? 1.0;
+
     final ocultar =
         preferencias.getBool('ocultarCompletados_$id') ?? false;
 
     PreferenciasService.temaActual.value =
     oscuro ? ThemeMode.dark : ThemeMode.light;
+
     PreferenciasService.tamanoLetra.value = tamano;
     PreferenciasService.ocultarCompletados.value = ocultar;
 
@@ -47,6 +56,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     });
   }
 
+  // Guarda el tema seleccionado.
   Future<void> guardarTema(bool oscuro) async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -58,6 +68,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     await PreferenciasService.guardarTema(oscuro);
   }
 
+  // Guarda el tamaño de letra.
   Future<void> guardarTamanoLetra(double tamano) async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -69,6 +80,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     await PreferenciasService.guardarTamanoLetra(tamano);
   }
 
+  // Guarda si se ocultan los hábitos completados.
   Future<void> guardarOcultarCompletados(bool ocultar) async {
     final preferencias = await SharedPreferences.getInstance();
 
@@ -80,6 +92,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     await PreferenciasService.guardarOcultarCompletados(ocultar);
   }
 
+  // Borra los datos personales del usuario.
   Future<void> borrarDatosUsuario() async {
     final id = widget.usuario.id;
 
@@ -90,6 +103,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
     PreferenciasService.ocultarCompletados.value = false;
   }
 
+  // Pide confirmación antes de borrar los datos.
   Future<void> confirmarBorrado() async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -119,14 +133,18 @@ class _AjustesScreenState extends State<AjustesScreen> {
       },
     );
 
-    if (confirmar != true || !mounted) return;
+    if (!mounted || confirmar != true) return;
 
     await borrarDatosUsuario();
 
     if (!mounted) return;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/',
+    // Volvemos al inicio de sesión.
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
           (route) => false,
     );
   }
@@ -144,6 +162,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
           : ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Cambiar entre tema claro y oscuro.
           ValueListenableBuilder<ThemeMode>(
             valueListenable: PreferenciasService.temaActual,
             builder: (context, tema, child) {
@@ -157,6 +176,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
 
           const SizedBox(height: 16),
 
+          // Cambiar el tamaño de letra.
           ValueListenableBuilder<double>(
             valueListenable: PreferenciasService.tamanoLetra,
             builder: (context, tamano, child) {
@@ -166,6 +186,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
                   Text(
                     'Tamaño de letra: ${tamano.toStringAsFixed(1)}',
                   ),
+
                   Slider(
                     value: tamano,
                     min: 0.8,
@@ -181,6 +202,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
 
           const SizedBox(height: 16),
 
+          // Mostrar u ocultar hábitos completados.
           ValueListenableBuilder<bool>(
             valueListenable:
             PreferenciasService.ocultarCompletados,
@@ -197,6 +219,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
 
           const SizedBox(height: 24),
 
+          // Borrar los datos del usuario.
           ElevatedButton.icon(
             icon: const Icon(Icons.delete_outline),
             label: const Text('Borrar mis datos'),

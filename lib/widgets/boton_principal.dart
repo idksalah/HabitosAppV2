@@ -17,6 +17,12 @@ class BotonPrincipal extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: accion,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.all(16),
+          textStyle: const TextStyle(
+            fontSize: 16,
+          ),
+        ),
         child: Text(texto),
       ),
     );
